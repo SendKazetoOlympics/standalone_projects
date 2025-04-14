@@ -19,6 +19,10 @@ Given a video, these are the
 2.2 (Path 1) Combine the 2D pose from different angles to form the 3D pose time series
 3. Use 3D pose estimation to directly estimate the 3D joint positions time series.
 
+## Example data
+
+You can find a test data here in [this link](https://drive.google.com/file/d/1coc7POstmawTlj3pYkuGsKPTqn1M7G7r/view?usp=sharing)
+
 ## References
 
 1. [OpenCV](https://opencv.org/)
