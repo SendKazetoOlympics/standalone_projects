@@ -19,10 +19,10 @@ Given a video, these are the
 2.2 (Path 1) Combine the 2D pose from different angles to form the 3D pose time series
 3. Use 3D pose estimation to directly estimate the 3D joint positions time series.
 
-
-
 ## References
 
 1. [OpenCV](https://opencv.org/)
 2. [Ultralytics](https://www.ultralytics.com/)
 3. [Computer vision: Algorithms and Applications](https://szeliski.org/Book/)
+4. [Multiple view geometry in computer vision](https://www.r-5.org/files/books/computers/algo-list/image-processing/vision/Richard_Hartley_Andrew_Zisserman-Multiple_View_Geometry_in_Computer_Vision-EN.pdf)
+5. [Multiple view geometry youtube lectures](https://www.youtube.com/playlist?list=PLTBdjV_4f-EJn6udZ34tht9EVIW7lbeo4)
