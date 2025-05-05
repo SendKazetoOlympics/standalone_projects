@@ -1,5 +1,6 @@
 # Numerical model for high jump
 
+## Background
 This is **THE** classic video people use to demonstrate a crucial moment in high jump, the take-off.
 [youtube video](https://youtube.com/clip/Ugkxb-wanlQlpa3wB1dw5aVSFf4tTin74ZTD?si=IhXdvZv-yrzSNcIa)
 The idea behind a good take-off is the athlete should be as stiff as possible such that the horizontal momentum generated during the approach can be converted into vertical momentum without much energy loss.
@@ -26,3 +27,4 @@ There are many intermediate steps needed to be taken before one can address thes
 
 1. [Mujoco](https://mujoco.readthedocs.io/en/stable/overview.html)
 2. [Bouncing ball](https://en.wikipedia.org/wiki/Bouncing_ball)
+3. [Main repo](https://github.com/kazewong/simple_hj_model)
