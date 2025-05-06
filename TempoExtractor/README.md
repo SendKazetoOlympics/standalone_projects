@@ -12,8 +12,6 @@ In this project, you will create an active learning software loop which you will
 2. Train a YOLO + time coherence model to identify periods of interest
 3. Experiment with better vision and time coherence model
 
-## Data
-
 ## Reference
 
 1. [YOLO](https://docs.ultralytics.com/)
