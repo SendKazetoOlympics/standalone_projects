@@ -190,8 +190,8 @@ def track_object_path(video_path, output_path=None):
 
 
 def main():
-    # track_object_path("../sam/runs/track2/mask.mp4", "./output/path.mp4")
-    track_object_path("../data/sample_data.mp4", "./output/test.mp4")
+    track_object_path("../sam/runs/track2/mask.mp4", "./output/path.mp4")
+    # track_object_path("../data/sample_data.mp4", "./output/test.mp4")
     print("Video processing complete! Check output file.")
 
 
