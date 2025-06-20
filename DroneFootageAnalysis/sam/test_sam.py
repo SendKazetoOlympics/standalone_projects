@@ -3,6 +3,7 @@ from sam2.build_sam import build_sam2_video_predictor
 import os
 import numpy as np
 import torch
+from pathlib import Path
 
 from sam_utils import (
     extract_frames_from_video,
@@ -36,32 +37,33 @@ model_cfg = "./configs/sam2.1/sam2.1_hiera_s.yaml"
 # Load model
 predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device.type)
 
+# Input video path
+video_path = Path(input("Enter the path to the video file: "))
 
 # Sam2 wants a list of JPEG images as input
-video_dir = "../data/jpg_frames"
 extract_frames_from_video(
-    video_path="../data/sample_data.mp4",
-    output_dir=video_dir,
+    video_path=video_path,
     quality=2,
 )
 
+frames_dir_path = video_path.parent / video_path.stem
 # Scan all the JPEG frame names
 frame_names = [
     p
-    for p in os.listdir(video_dir)
+    for p in os.listdir(str(frames_dir_path))
     if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
 ]
 frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
 
 # Initialize inference state
-inference_state = predictor.init_state(video_path=video_dir)
+inference_state = predictor.init_state(video_path=str(frames_dir_path))
 
 frame_idx = 0
 jumper_obj_id = 1
 
 # TODO dynamically get a clicked point
 # Add a click
-points = np.array([[420, 360]], dtype=np.float32)
+points = np.array([[1040, 400]], dtype=np.float32)
 # For labels, `1` means positive click and `0` means negative click
 labels = np.array([1], np.int32)
 _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
@@ -72,14 +74,6 @@ _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
     labels=labels,
 )
 
-# TODO get rid of it or keep it for debugging and confirming if tracking works
-# Show the results on the current (interacted) frame
-# plt.figure(figsize=(9, 6))
-# plt.title(f"frame {frame_idx} - after adding a positive click")
-# plt.imshow(Image.open(os.path.join(video_dir, frame_names[frame_idx])))
-# # show_points(points, labels, plt.gca())
-# show_mask((out_mask_logits[0] > 0.0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0])
-# plt.show()
 
 # Run propagation throughout the video and collect the results in a dict
 video_segments = {}
@@ -94,22 +88,21 @@ for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
 
 # Save segments to jpg images
 for frame_idx, masks_dict in video_segments.items():
-    frame_path = f"../data/jpg_frames/{frame_idx:05d}.jpg"
-    output_path = f"./runs/track2/video/{frame_idx:05d}_tracked.jpg"
+    frame_path = frames_dir_path / f"{frame_idx:05d}.jpg"
+    output_path = f"./runs/track3/video/{frame_idx:05d}_tracked.jpg"
     add_masks_to_frame(frame_path, masks_dict, output_path)
-    # Add masks to a blank image as well for analysis
-    blank_output_path = f"./runs/track2/blank/{frame_idx:05d}_mask.jpg"
+    blank_output_path = f"./runs/track3/blank/{frame_idx:05d}_mask.jpg"
     add_masks_to_blank((1080, 1920), masks_dict, blank_output_path)
 
 # Combine all segments into a single video
 create_video_from_frames(
-    input_dir="./runs/track2/video",
+    input_dir="./runs/track3/video",
     frame_format="%05d_tracked.jpg",
     output_file="./runs/track2/tracked_video.mp4",
     framerate=59.99,
 )
 create_video_from_frames(
-    input_dir="./runs/track2/blank",
+    input_dir="./runs/track3/blank",
     frame_format="%05d_mask.jpg",
     output_file="./runs/track2/mask.mp4",
     framerate=59.99,

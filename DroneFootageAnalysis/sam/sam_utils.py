@@ -5,28 +5,28 @@ import numpy as np
 import subprocess
 from pathlib import Path
 
+# TODO return bool useful?
 
-def extract_frames_from_video(video_path, output_dir="./data/jpg_frames", quality=2):
+
+def extract_frames_from_video(video_path, quality=2):
     """
     Extract JPEG frames from a video file using ffmpeg.
 
     Args:
-        video_path (str): Path to the input video file
-        output_dir (str): Directory to save extracted frames
+        video_path (Path): Path to the input video file
         quality (int): JPEG quality (1-31, lower is better quality)
 
     Returns:
-        bool: True if successful, False otherwise
+        int: Number of frames extracted, or False if an error occurred
     """
 
-    # Ensure output directory exists
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+    # Ensure input directory exists
+    if not video_path.exists():
+        raise FileNotFoundError(f"Video file {video_path} does not exist.")
 
-    # Check if input video exists
-    if not Path(video_path).exists():
-        print(f"Error: Video file '{video_path}' not found.")
-        return False
+    # Ensure output directory exists
+    output_path = video_path.parent / video_path.stem
+    output_path.mkdir(parents=True, exist_ok=True)
 
     # Construct ffmpeg command
     output_pattern = output_path / f"%05d.jpg"
@@ -34,7 +34,7 @@ def extract_frames_from_video(video_path, output_dir="./data/jpg_frames", qualit
     cmd = [
         "ffmpeg",
         "-i",
-        video_path,
+        str(video_path),
         "-q:v",
         str(quality),
         "-start_number",
@@ -43,7 +43,7 @@ def extract_frames_from_video(video_path, output_dir="./data/jpg_frames", qualit
     ]
 
     try:
-        print(f"Extracting frames from '{video_path}' to '{output_dir}'...")
+        print(f"Extracting frames from '{video_path}' to '{output_path}'...")
         print(f"Command: {' '.join(cmd)}")
 
         # Run ffmpeg command
@@ -51,9 +51,9 @@ def extract_frames_from_video(video_path, output_dir="./data/jpg_frames", qualit
 
         # Count extracted frames
         frame_count = len(list(output_path.glob("*.jpg")))
-        print(f"Successfully extracted {frame_count} frames to '{output_dir}'")
+        print(f"Successfully extracted {frame_count} frames to '{output_path}'")
 
-        return True
+        return frame_count
 
     except subprocess.CalledProcessError as e:
         print(f"Error running ffmpeg: {e}")
@@ -207,6 +207,7 @@ def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=0.5):
         output_path: Where to save the result
         alpha: Transparency of the overlay (0.0 = transparent, 1.0 = opaque)
     """
+    # TODO frame and height in the input seem to be flipped?
     frame = np.ones((frame_size[0], frame_size[1], 3), dtype=np.uint8) * 255
     overlay = np.zeros_like(frame)
 
