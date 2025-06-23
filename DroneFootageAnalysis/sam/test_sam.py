@@ -5,12 +5,7 @@ import numpy as np
 import torch
 from pathlib import Path
 
-from sam_utils import (
-    extract_frames_from_video,
-    add_masks_to_frame,
-    add_masks_to_blank,
-    create_video_from_frames,
-)
+from sam_utils import *
 
 # TODO right now all the paths are hardcoded, make them configurable, for now run them from within the `sam` dirtory
 
@@ -30,6 +25,7 @@ if device.type == "cuda":
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 
+# TODO try tiny model
 # Load the SAM2 model configuration and checkpoint
 sam2_checkpoint = "./checkpoints/sam2.1_hiera_small.pt"
 model_cfg = "./configs/sam2.1/sam2.1_hiera_s.yaml"
@@ -43,7 +39,6 @@ video_path = Path(input("Enter the path to the video file: "))
 # Sam2 wants a list of JPEG images as input
 extract_frames_from_video(
     video_path=video_path,
-    quality=2,
 )
 
 frames_dir_path = video_path.parent / video_path.stem
@@ -60,16 +55,28 @@ inference_state = predictor.init_state(video_path=str(frames_dir_path))
 
 frame_idx = 0
 jumper_obj_id = 1
+pit_id = 2
 
 # TODO dynamically get a clicked point
-# Add a click
-points = np.array([[1040, 400]], dtype=np.float32)
 # For labels, `1` means positive click and `0` means negative click
 labels = np.array([1], np.int32)
-_, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
+
+# Add a click for the jumper
+points = np.array([[420, 360]], dtype=np.float32)
+_, _, _ = predictor.add_new_points_or_box(
     inference_state=inference_state,
     frame_idx=frame_idx,
     obj_id=jumper_obj_id,
+    points=points,
+    labels=labels,
+)
+
+# Add a click for the pit
+points = np.array([[1080, 500]], dtype=np.float32)
+_, _, _ = predictor.add_new_points_or_box(
+    inference_state=inference_state,
+    frame_idx=frame_idx,
+    obj_id=pit_id,
     points=points,
     labels=labels,
 )
@@ -86,6 +93,8 @@ for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
     }
 
 
+# TODO make paths Path objects
+# TODO Ensure output directories exist
 # Save segments to jpg images
 for frame_idx, masks_dict in video_segments.items():
     frame_path = frames_dir_path / f"{frame_idx:05d}.jpg"
@@ -96,14 +105,14 @@ for frame_idx, masks_dict in video_segments.items():
 
 # Combine all segments into a single video
 create_video_from_frames(
-    input_dir="./runs/track3/video",
+    input_dir="./runs/track4/video",
     frame_format="%05d_tracked.jpg",
-    output_file="./runs/track2/tracked_video.mp4",
+    output_file="./runs/track4/tracked_video.mp4",
     framerate=59.99,
 )
 create_video_from_frames(
-    input_dir="./runs/track3/blank",
+    input_dir="./runs/track4/blank",
     frame_format="%05d_mask.jpg",
-    output_file="./runs/track2/mask.mp4",
+    output_file="./runs/track4/mask.mp4",
     framerate=59.99,
 )

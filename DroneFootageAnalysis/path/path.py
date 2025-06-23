@@ -4,7 +4,7 @@ import numpy as np
 from math import sqrt
 
 
-def create_speed_graph(path_points, timestamps, output_file="speed_graph.png"):
+def create_speed_graph(path_points, timestamps, output_file):
     if len(path_points) < 2:
         print("Not enough points to calculate speed")
         return
@@ -186,12 +186,11 @@ def track_object_path(video_path, output_path=None):
     cv2.destroyAllWindows()
 
     if len(path_points) > 1:
-        create_speed_graph(path_points, timestamps, "speed_graph.png")
+        create_speed_graph(path_points, timestamps, "./output/track3/speed_graph.png")
 
 
 def main():
-    track_object_path("../sam/runs/track2/mask.mp4", "./output/path.mp4")
-    # track_object_path("../data/sample_data.mp4", "./output/test.mp4")
+    track_object_path("../sam/runs/track3/mask.mp4", "./output/track3/path.mp4")
     print("Video processing complete! Check output file.")
 
 
