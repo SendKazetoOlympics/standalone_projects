@@ -1,7 +1,13 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from math import sqrt
+import math
+
+from pathlib import Path
+
+import torch
+from torchvision.ops import masks_to_boxes
+from torchvision.io import read_image
 
 
 def create_speed_graph(path_points, timestamps, output_file):
@@ -17,7 +23,7 @@ def create_speed_graph(path_points, timestamps, output_file):
         # Calculate distance between points (in pixels)
         x1, y1 = path_points[i - 1]
         x2, y2 = path_points[i]
-        distance = sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
         # Calculate time difference
         time_diff = timestamps[i] - timestamps[i - 1]
@@ -186,12 +192,41 @@ def track_object_path(video_path, output_path=None):
     cv2.destroyAllWindows()
 
     if len(path_points) > 1:
-        create_speed_graph(path_points, timestamps, "./output/track3/speed_graph.png")
+        create_speed_graph(path_points, timestamps, "./output/track7/speed_graph.png")
 
 
+def convert_mask_to_bounding_box(mask_path):
+    """
+    Convert a binary mask to a bounding box and save it as an image.
+
+    Args:
+        mask_path (Path): Path to the input binary mask image.
+    """
+    mask = read_image(mask_path)
+    if mask is None:
+        print(f"Error: Could not read mask from {mask_path}")
+        return
+    # Assumes solid mask with 128 as the background
+    obj_ids = torch.unique(mask)
+    print(obj_ids)
+    # obj_ids.remove(128)
+    # Split the color-encoded mask into a set of boolean masks
+    # masks = mask == obj_ids[:, None, None]
+    print(mask.size())
+    print(mask)
+
+
+# TODO ensure output directory exists
+# TODO angle
 def main():
-    track_object_path("../sam/runs/track3/mask.mp4", "./output/track3/path.mp4")
-    print("Video processing complete! Check output file.")
+    # convert_mask_to_bounding_box("../sam/runs/track5/mask/00000_mask.jpg")
+
+    track_number = 7
+    track = f"track{track_number}"
+    Path(f"./output/{track}").mkdir(parents=True, exist_ok=True)
+    track_object_path(f"../sam/runs/{track}/video.mp4", f"./output/{track}/path.mp4")
+    # TODO refactor to move create_speed_graph to main; for now DON'T FORGET TO CHANGE THE OUTPUT PATH
+    print("Video processing complete!")
 
 
 # Usage examples

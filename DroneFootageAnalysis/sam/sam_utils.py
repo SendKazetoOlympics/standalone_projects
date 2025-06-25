@@ -1,8 +1,9 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-
 import subprocess
+
+import torch
 from pathlib import Path
 
 # TODO return bool useful?
@@ -197,7 +198,7 @@ def add_masks_to_frame(frame_path, masks_dict, output_path, alpha=0.5):
     cv2.imwrite(output_path, result_bgr)
 
 
-def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=0.5):
+def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=1):
     """
     Add colored masks to a frame and save as JPG
 
@@ -220,7 +221,7 @@ def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=0.5):
         [0, 255, 255],
     ]
 
-    for _, (obj_id, mask) in enumerate(masks_dict.items()):
+    for obj_id, mask in masks_dict.items():
         # Fix the mask shape
         if len(mask.shape) == 3 and mask.shape[0] == 1:
             mask = mask.squeeze(0)  # Remove first dimension if it's 1
@@ -237,6 +238,7 @@ def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=0.5):
         color = colors[obj_id % len(colors)]
         overlay[mask] = color
 
+    # TODO addWeighted seems to still not give solid masks, even with alpha=1
     result = cv2.addWeighted(frame, 1 - alpha, overlay, alpha, 0)
     result_bgr = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
     cv2.imwrite(output_path, result_bgr)

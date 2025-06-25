@@ -25,7 +25,6 @@ if device.type == "cuda":
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 
-# TODO try tiny model
 # Load the SAM2 model configuration and checkpoint
 sam2_checkpoint = "./checkpoints/sam2.1_hiera_small.pt"
 model_cfg = "./configs/sam2.1/sam2.1_hiera_s.yaml"
@@ -37,6 +36,7 @@ predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device
 video_path = Path(input("Enter the path to the video file: "))
 
 # Sam2 wants a list of JPEG images as input
+# TODO check if the video is already in JPEG format
 extract_frames_from_video(
     video_path=video_path,
 )
@@ -57,12 +57,37 @@ frame_idx = 0
 jumper_obj_id = 1
 pit_id = 2
 
-# TODO dynamically get a clicked point
+
+# TODO multiple different objects?
+click_coords = []
+
+
+def mouse_callback(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        click_coords.append((x, y))
+        print(f"Click at: ({x}, {y})")
+
+
+cap = cv2.VideoCapture(str(video_path))
+cv2.namedWindow("Video")
+cv2.setMouseCallback("Video", mouse_callback)
+
+ret, frame = cap.read()
+
+if not ret:
+    raise ValueError("Could not read frame from video.")
+
+cv2.imshow("Video", frame)
+cv2.waitKey(0)
+cap.release()
+cv2.destroyAllWindows()
+
+
 # For labels, `1` means positive click and `0` means negative click
 labels = np.array([1], np.int32)
 
 # Add a click for the jumper
-points = np.array([[420, 360]], dtype=np.float32)
+points = np.array([[click_coords[0]]], dtype=np.float32)
 _, _, _ = predictor.add_new_points_or_box(
     inference_state=inference_state,
     frame_idx=frame_idx,
@@ -72,14 +97,14 @@ _, _, _ = predictor.add_new_points_or_box(
 )
 
 # Add a click for the pit
-points = np.array([[1080, 500]], dtype=np.float32)
-_, _, _ = predictor.add_new_points_or_box(
-    inference_state=inference_state,
-    frame_idx=frame_idx,
-    obj_id=pit_id,
-    points=points,
-    labels=labels,
-)
+# points = np.array([[1080, 500]], dtype=np.float32)
+# _, _, _ = predictor.add_new_points_or_box(
+#     inference_state=inference_state,
+#     frame_idx=frame_idx,
+#     obj_id=pit_id,
+#     points=points,
+#     labels=labels,
+# )
 
 
 # Run propagation throughout the video and collect the results in a dict
@@ -94,25 +119,38 @@ for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
 
 
 # TODO make paths Path objects
-# TODO Ensure output directories exist
+# TODO refactor
+# TODO save masks to .pt files
 # Save segments to jpg images
+track_number = 7
+track = f"track{track_number}"
+Path(f"./runs/{track}/video").mkdir(parents=True, exist_ok=True)
+Path(f"./runs/{track}/mask").mkdir(parents=True, exist_ok=True)
+Path(f"./runs/{track}/mask_tensors").mkdir(parents=True, exist_ok=True)
 for frame_idx, masks_dict in video_segments.items():
     frame_path = frames_dir_path / f"{frame_idx:05d}.jpg"
-    output_path = f"./runs/track3/video/{frame_idx:05d}_tracked.jpg"
+    output_path = f"./runs/{track}/video/{frame_idx:05d}_tracked.jpg"
     add_masks_to_frame(frame_path, masks_dict, output_path)
-    blank_output_path = f"./runs/track3/blank/{frame_idx:05d}_mask.jpg"
-    add_masks_to_blank((1080, 1920), masks_dict, blank_output_path)
+    mask_output_path = f"./runs/{track}/mask/{frame_idx:05d}_mask.jpg"
+    add_masks_to_blank((1080, 1920), masks_dict, mask_output_path)
+
+    for obj_id, mask in masks_dict.items():
+        torch.save(
+            torch.tensor(mask, dtype=torch.uint8),
+            f"./runs/{track}/mask_tensors/{frame_idx:05d}_{obj_id}_mask.pt",
+        )
 
 # Combine all segments into a single video
+# TODO ensure fps is set the same as the input video
 create_video_from_frames(
-    input_dir="./runs/track4/video",
+    input_dir=f"./runs/{track}/video",
     frame_format="%05d_tracked.jpg",
-    output_file="./runs/track4/tracked_video.mp4",
-    framerate=59.99,
+    output_file=f"./runs/{track}/video.mp4",
+    framerate=59.94,
 )
 create_video_from_frames(
-    input_dir="./runs/track4/blank",
+    input_dir=f"./runs/{track}/mask",
     frame_format="%05d_mask.jpg",
-    output_file="./runs/track4/mask.mp4",
-    framerate=59.99,
+    output_file=f"./runs/{track}/mask.mp4",
+    framerate=59.94,
 )
