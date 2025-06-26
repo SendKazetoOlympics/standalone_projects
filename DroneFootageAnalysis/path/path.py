@@ -1,17 +1,19 @@
+import math
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import math
-
 from pathlib import Path
-
 import torch
-from torchvision.ops import masks_to_boxes
+import pandas as pd
+
+# from torchvision.ops import masks_to_boxes
 from torchvision.io import read_image
 
 
-def create_speed_graph(path_points, timestamps, output_file):
-    if len(path_points) < 2:
+# TODO refactor to create_graph
+def create_speed_graph(first_moments, timestamps, output_file):
+    if len(first_moments) < 2:
         print("Not enough points to calculate speed")
         return
 
@@ -19,10 +21,10 @@ def create_speed_graph(path_points, timestamps, output_file):
     time_points = []
 
     # Calculate speed between consecutive points
-    for i in range(1, len(path_points)):
+    for i in range(1, len(first_moments)):
         # Calculate distance between points (in pixels)
-        x1, y1 = path_points[i - 1]
-        x2, y2 = path_points[i]
+        x1, y1 = first_moments[i - 1]
+        x2, y2 = first_moments[i]
         distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
         # Calculate time difference
@@ -67,8 +69,8 @@ def create_speed_graph(path_points, timestamps, output_file):
 
     # Plot path visualization
     plt.subplot(1, 2, 2)
-    x_coords = [point[0] for point in path_points]
-    y_coords = [point[1] for point in path_points]
+    x_coords = [point[0] for point in first_moments]
+    y_coords = [point[1] for point in first_moments]
 
     # Color points by speed (interpolate speeds for path points)
     colors = []
@@ -86,7 +88,7 @@ def create_speed_graph(path_points, timestamps, output_file):
 
     plt.tight_layout()
     plt.savefig(output_file, dpi=150, bbox_inches="tight")
-    plt.show()
+    # plt.show()
 
     print(f"Speed graph saved as: {output_file}")
     print(f"Average speed: {avg_speed:.2f} pixels/second")
@@ -94,6 +96,48 @@ def create_speed_graph(path_points, timestamps, output_file):
     print(f"Minimum speed: {min_speed:.2f} pixels/second")
 
     return speeds, time_points
+
+
+def create_graph(x, y, x_axis, y_axis, title, output_file):
+    """
+    Create a graph from x and y data and save it as an image.
+
+    Args:
+        x (list): X-axis data.
+        y (list): Y-axis data.
+        x_axis (str): Label for the x-axis.
+        y_axis (str): Label for the y-axis.
+        title (str): Title of the graph.
+        output_file (Path): Path to save the graph image.
+    """
+    plt.figure(figsize=(10, 5))
+    plt.plot(x, y, marker="o", linestyle="-")
+    plt.xlabel(x_axis)
+    plt.ylabel(y_axis)
+    plt.title(title)
+    plt.grid(True)
+    plt.savefig(str(output_file), dpi=150, bbox_inches="tight")
+    # plt.show()
+    plt.close()
+
+    print(f"Graph saved as: {output_file}")
+
+
+def create_csv(x, y, x_axis, y_axis, output_file):
+    """
+    Create a CSV file from the provided data.
+
+    Args:
+        x (list): X-axis data.
+        y (list): Y-axis data.
+        x_axis (str): Label for the x-axis.
+        y_axis (str): Label for the y-axis.
+        output_file (Path): Path to save the CSV file.
+    """
+    data = {x_axis: x, y_axis: y}
+    df = pd.DataFrame(data)
+    df.to_csv(output_file, index=False)
+    print(f"CSV file saved as: {output_file}")
 
 
 def area_of_mask(path_to_mask):
@@ -108,19 +152,19 @@ def area_of_mask(path_to_mask):
     """
     mask = torch.load(path_to_mask)
     if mask is None:
-        print(f"Error: Could not read mask from {path_to_mask}")
-        return None
+        raise ValueError(f"Error: Could not read mask from {path_to_mask}")
 
     # Convert to float and calculate area
     mask_float = mask.float()
+
     area = torch.sum(mask_float)
 
-    return int(area.item())
+    return area.int().item()
 
 
-def mean_coordinates_of_mask(path_to_mask):
+def first_moment_of_mask(path_to_mask):
     """
-    Calculate the mean coordinates of a binary mask.
+    Calculate the first moment of inertia (centroid) of a binary mask.
 
     Args:
         path_to_mask (Path): Path to the binary mask image.
@@ -130,30 +174,56 @@ def mean_coordinates_of_mask(path_to_mask):
     """
     mask = torch.load(path_to_mask)
     if mask is None:
-        print(f"Error: Could not read mask from {path_to_mask}")
-        return None
+        raise ValueError(f"Error: Could not read mask from {path_to_mask}")
 
     mask_float = mask.float()
 
+    area = torch.sum(mask_float)
+
     height, width = mask_float.shape[1:]
 
-    x_coords = torch.arange(width)
-    column_sums = mask_float[0].sum(dim=0)
+    x_coords = torch.arange(width).view(1, -1).expand(height, width)
+    y_coords = torch.arange(height).view(-1, 1).expand(height, width)
 
-    # Weighted sum of x * column_sums
-    x_numerator = (x_coords * column_sums).sum()
-    x_denominator = column_sums.sum()
-    center_x = x_numerator / (x_denominator + 1e-8)  # Avoid division by zero
+    x = (x_coords * mask).sum() / (area + 1e-8)
+    y = (y_coords * mask).sum() / (area + 1e-8)
 
-    y_coords = torch.arange(height)
-    row_sums = mask_float[0].sum(dim=1)
+    return x.round().int().item(), y.round().int().item()
 
-    # Weighted sum of y * row_sums
-    y_numerator = (y_coords * row_sums).sum()
-    y_denominator = row_sums.sum()
-    center_y = y_numerator / (y_denominator + 1e-8)  # Avoid division by zero
 
-    return center_x.round().int().item(), center_y.round().int().item()
+def second_moment_of_mask(path_to_mask):
+    """
+    Calculate the second moment of inertia of a binary mask.
+
+    Args:
+        path_to_mask (Path): Path to the binary mask image.
+    Returns:
+        tuple: Second moment of inertia (Ixx, Iyy, Ixy).
+    """
+    mask = torch.load(path_to_mask)
+    if mask is None:
+        raise ValueError(f"Error: Could not read mask from {path_to_mask}")
+
+    mask_float = mask.float()
+
+    area = torch.sum(mask_float)
+
+    height, width = mask_float.shape[1:]
+
+    y_coords = torch.arange(height).view(-1, 1).expand(height, width)
+    x_coords = torch.arange(width).view(1, -1).expand(height, width)
+
+    x = (x_coords * mask).sum() / (area + 1e-8)
+    y = (y_coords * mask).sum() / (area + 1e-8)
+
+    x_diff = x_coords - x
+    y_diff = y_coords - y
+
+    xx = (x_diff**2 * mask).sum() / (area + 1e-8)
+    yy = (y_diff**2 * mask).sum() / (area + 1e-8)
+    xy = (x_diff * y_diff * mask).sum() / (area + 1e-8)
+
+    return xx.int().item(), yy.int().item(), xy.int().item()
 
 
 def track_object_path(video_path, output_path):
@@ -161,12 +231,11 @@ def track_object_path(video_path, output_path):
     Track an object in a video and visualize its path with speed calculation.
 
     Args:
-        video_path (str): Path to the input video file.
+        video_path (Path): Path to the input video file.
         output_path (Path): Path to save the output video with tracking.
     """
-    # TODO change video_path to Path
     # Open video capture
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(str(video_path))
 
     # Get video properties
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -186,9 +255,11 @@ def track_object_path(video_path, output_path):
         return
 
     # Store path points and timestamps for speed calculation
-    path_points = []
-    timestamps = []
+    areas = []
+    first_moments = []
+    second_moments = []
 
+    timestamps = []
     frame_count = 0
 
     while True:
@@ -196,42 +267,43 @@ def track_object_path(video_path, output_path):
         if not ret:
             break
 
-        # Calculate center point of the object
-        center = mean_coordinates_of_mask(
-            Path(f"../sam/runs/track7/mask_tensors/{frame_count:05d}_1_mask.pt")
-        )
-        if center is not None:
-            path_points.append(center)
-            timestamps.append(frame_count / fps)
+        mask_path = video_path.parent / f"mask_tensors/{frame_count:05d}_1_mask.pt"
 
-            # Draw the path with solid color and thickness
-            if len(path_points) > 1:
-                for i in range(1, len(path_points)):
-                    cv2.line(
-                        frame, path_points[i - 1], path_points[i], (0, 255, 255), 3
-                    )
+        # Calculate area of object
+        area = area_of_mask(mask_path)
+        areas.append(area)
 
-            # Draw smoother path
-            # if len(path_points) > 1:
-            #     for i in range(1, len(path_points), 5):
-            #         if i - 5 >= 0 and i % 2 == 0:
-            #             cv2.line(
-            #                 frame, path_points[i - 5], path_points[i], (255, 255, 0), 3
-            #             )
+        # Calculate the first point of inertia, a.k.a. cetner of the object
+        first_moment = first_moment_of_mask(mask_path)
+        first_moments.append(first_moment)
 
-            # Draw current center point
-            cv2.circle(frame, center, 5, (0, 0, 255), -1)
+        # Calculate second moment of inertia
+        second_moment = second_moment_of_mask(mask_path)
+        second_moments.append(second_moment)
 
-        # Display frame
-        cv2.imshow("Object Tracking with Path", frame)
+        timestamps.append(frame_count / fps)
+
+        # Draw the path with solid color and thickness
+        if len(first_moments) > 1:
+            for i in range(1, len(first_moments)):
+                cv2.line(
+                    frame, first_moments[i - 1], first_moments[i], (0, 255, 255), 3
+                )
+
+        # Draw smoother path
+        # if len(first_moments) > 1:
+        #     for i in range(1, len(first_moments), 5):
+        #         if i - 5 >= 0 and i % 2 == 0:
+        #             cv2.line(
+        #                 frame, first_moments[i - 5], first_moments[i], (255, 255, 0), 3
+        #             )
+
+        # Draw current center point
+        cv2.circle(frame, first_moment, 5, (0, 0, 255), -1)
 
         # Save frame if output is specified
         if output_path:
             out.write(frame)
-
-        # Break on 'q' key press
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
 
         frame_count += 1
 
@@ -239,12 +311,80 @@ def track_object_path(video_path, output_path):
     cap.release()
     if output_path:
         out.release()
-    cv2.destroyAllWindows()
 
-    if len(path_points) > 1:
-        create_speed_graph(
-            path_points, timestamps, output_path.parent / "speed_graph.png"
-        )
+    # It's graph time :)
+    area_args = [timestamps, areas, "Time (seconds)", "Area (pixels)", "Area Over Time"]
+    create_graph(*area_args, output_file=output_path.parent / "area_graph.png")
+    create_csv(*area_args[:-1], output_file=output_path.parent / "area_data.csv")
+
+    x_args = [
+        timestamps,
+        [point[0] for point in first_moments],
+        "Time (seconds)",
+        "X Position (pixels)",
+        "X Position Over Time",
+    ]
+    create_graph(
+        *x_args,
+        output_file=output_path.parent / "x_graph.png",
+    )
+    create_csv(*x_args[:-1], output_file=output_path.parent / "x_data.csv")
+
+    y_args = [
+        timestamps,
+        [point[1] for point in first_moments],
+        "Time (seconds)",
+        "Y Position (pixels)",
+        "Y Position Over Time",
+    ]
+    create_graph(
+        *y_args,
+        output_file=output_path.parent / "y_graph.png",
+    )
+    create_csv(*y_args[:-1], output_file=output_path.parent / "y_data.csv")
+
+    xx_args = [
+        timestamps,
+        [point[0] for point in second_moments],
+        "Time (seconds)",
+        "Ixx",
+        "Ixx Over Time",
+    ]
+    create_graph(
+        *xx_args,
+        output_file=output_path.parent / "ixx_graph.png",
+    )
+    create_csv(*xx_args[:-1], output_file=output_path.parent / "ixx_data.csv")
+
+    yy_args = [
+        timestamps,
+        [point[1] for point in second_moments],
+        "Time (seconds)",
+        "Iyy",
+        "Iyy Over Time",
+    ]
+    create_graph(
+        *yy_args,
+        output_file=output_path.parent / "iyy_graph.png",
+    )
+    create_csv(*yy_args[:-1], output_file=output_path.parent / "iyy_data.csv")
+
+    xy_args = [
+        timestamps,
+        [point[2] for point in second_moments],
+        "Time (seconds)",
+        "Ixy",
+        "Ixy Over Time",
+    ]
+    create_graph(
+        *xy_args,
+        output_file=output_path.parent / "ixy_graph.png",
+    )
+    create_csv(*xy_args[:-1], output_file=output_path.parent / "ixy_data.csv")
+
+    create_speed_graph(
+        first_moments, timestamps, output_path.parent / "speed_graph.png"
+    )
 
 
 def convert_mask_to_bounding_box(mask_path):
@@ -277,9 +417,9 @@ def main():
     track = f"track{track_number}"
     Path(f"./output/{track}").mkdir(parents=True, exist_ok=True)
     track_object_path(
-        f"../sam/runs/{track}/video.mp4", Path(f"./output/{track}/path.mp4")
+        Path(f"../sam/runs/{track}/video.mp4"), Path(f"./output/{track}/path.mp4")
     )
-    # TODO refactor to move create_speed_graph to main; for now DON'T FORGET TO CHANGE THE OUTPUT PATH
+    # TODO refactor to move create_speed_graph to main
     print("Video processing complete!")
 
 
