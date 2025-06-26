@@ -242,3 +242,21 @@ def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=1):
     result = cv2.addWeighted(frame, 1 - alpha, overlay, alpha, 0)
     result_bgr = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
     cv2.imwrite(output_path, result_bgr)
+
+
+def make_dir(base_path: Path):
+    if not base_path.exists():
+        base_path.mkdir(parents=True, exist_ok=True)
+        print(f"Created directory: {base_path}")
+        return base_path
+
+    parent = base_path.parent
+    stem = base_path.name
+    i = 1
+    while True:
+        new_path = parent / f"{stem}{i}"
+        if not new_path.exists():
+            new_path.mkdir(parents=True, exist_ok=True)
+            print(f"Created directory: {new_path}")
+            return new_path
+        i += 1

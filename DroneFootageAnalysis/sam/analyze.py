@@ -62,7 +62,7 @@ pit_id = 2
 click_coords = []
 
 
-def mouse_callback(event, x, y, flags, param):
+def mouse_callback(event, x, y, _flags, _param):
     if event == cv2.EVENT_LBUTTONDOWN:
         click_coords.append((x, y))
         print(f"Click at: ({x}, {y})")
@@ -120,37 +120,36 @@ for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
 
 # TODO make paths Path objects
 # TODO refactor
-# TODO save masks to .pt files
-# Save segments to jpg images
-track_number = 7
-track = f"track{track_number}"
-Path(f"./runs/{track}/video").mkdir(parents=True, exist_ok=True)
-Path(f"./runs/{track}/mask").mkdir(parents=True, exist_ok=True)
-Path(f"./runs/{track}/mask_tensors").mkdir(parents=True, exist_ok=True)
+# TODO make output directory same as video name?
+# Post-processing
+output_path = make_dir(Path(f"./runs/track"))
+make_dir(output_path / "video")
+make_dir(output_path / "mask")
+make_dir(output_path / "mask_tensors")
 for frame_idx, masks_dict in video_segments.items():
-    frame_path = frames_dir_path / f"{frame_idx:05d}.jpg"
-    output_path = f"./runs/{track}/video/{frame_idx:05d}_tracked.jpg"
-    add_masks_to_frame(frame_path, masks_dict, output_path)
-    mask_output_path = f"./runs/{track}/mask/{frame_idx:05d}_mask.jpg"
+    input_frame_path = frames_dir_path / f"{frame_idx:05d}.jpg"
+    video_output_path = output_path / f"video/{frame_idx:05d}_tracked.jpg"
+    add_masks_to_frame(input_frame_path, masks_dict, video_output_path)
+    mask_output_path = output_path / f"mask/{frame_idx:05d}_mask.jpg"
     add_masks_to_blank((1080, 1920), masks_dict, mask_output_path)
 
     for obj_id, mask in masks_dict.items():
         torch.save(
             torch.tensor(mask, dtype=torch.uint8),
-            f"./runs/{track}/mask_tensors/{frame_idx:05d}_{obj_id}_mask.pt",
+            output_path / f"mask_tensors/{frame_idx:05d}_{obj_id}_mask.pt",
         )
 
 # Combine all segments into a single video
 # TODO ensure fps is set the same as the input video
 create_video_from_frames(
-    input_dir=f"./runs/{track}/video",
+    input_dir=output_path / "video",
     frame_format="%05d_tracked.jpg",
-    output_file=f"./runs/{track}/video.mp4",
-    framerate=59.94,
+    output_file=output_path / "video.mp4",
+    framerate=56,
 )
 create_video_from_frames(
-    input_dir=f"./runs/{track}/mask",
+    input_dir=output_path / "mask",
     frame_format="%05d_mask.jpg",
-    output_file=f"./runs/{track}/mask.mp4",
-    framerate=59.94,
+    output_file=output_path / "mask.mp4",
+    framerate=56,
 )

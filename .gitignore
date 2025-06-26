@@ -49,4 +49,6 @@ Thumbs.db
 *.npy
 *.yaml
 *.txt
+*.csv
+oliver_journal.md
 DroneFootageAnalysis/sam/checkpoints/download_ckpts.sh
