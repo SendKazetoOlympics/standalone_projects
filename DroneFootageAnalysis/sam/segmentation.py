@@ -84,10 +84,10 @@ cv2.destroyAllWindows()
 
 
 # For labels, `1` means positive click and `0` means negative click
-labels = np.array([1], np.int32)
+labels = np.array([1] * len(click_coords), np.int32)
 
 # Add a click for the jumper
-points = np.array([[click_coords[0]]], dtype=np.float32)
+points = np.array([click_coords], dtype=np.float32)
 _, _, _ = predictor.add_new_points_or_box(
     inference_state=inference_state,
     frame_idx=frame_idx,
@@ -122,7 +122,7 @@ for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
 # TODO refactor
 # TODO make output directory same as video name?
 # Post-processing
-output_path = make_dir(Path(f"./runs/track"))
+output_path = make_dir(Path("./runs/track"))
 make_dir(output_path / "video")
 make_dir(output_path / "mask")
 make_dir(output_path / "mask_tensors")
