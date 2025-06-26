@@ -107,7 +107,7 @@ def create_video_from_frames(input_dir, frame_format, output_file, framerate):
         "-pix_fmt",
         "yuv420p",
         "-y",  # Overwrite output file if it exists
-        output_file,
+        str(output_file),
     ]
 
     try:

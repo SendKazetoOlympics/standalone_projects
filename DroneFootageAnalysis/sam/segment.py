@@ -131,7 +131,8 @@ for frame_idx, masks_dict in video_segments.items():
     video_output_path = output_path / f"video/{frame_idx:05d}_tracked.jpg"
     add_masks_to_frame(input_frame_path, masks_dict, video_output_path)
     mask_output_path = output_path / f"mask/{frame_idx:05d}_mask.jpg"
-    add_masks_to_blank((1080, 1920), masks_dict, mask_output_path)
+    # TODO dynamic resolution
+    add_masks_to_blank((720, 1280), masks_dict, mask_output_path)
 
     for obj_id, mask in masks_dict.items():
         torch.save(
