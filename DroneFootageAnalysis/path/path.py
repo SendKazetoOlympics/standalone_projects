@@ -96,7 +96,75 @@ def create_speed_graph(path_points, timestamps, output_file):
     return speeds, time_points
 
 
-def track_object_path(video_path, output_path=None):
+def area_of_mask(path_to_mask):
+    """
+    Calculate the area of a binary mask.
+
+    Args:
+        path_to_mask (Path): Path to the binary mask image.
+
+    Returns:
+        int: Area of the mask.
+    """
+    mask = torch.load(path_to_mask)
+    if mask is None:
+        print(f"Error: Could not read mask from {path_to_mask}")
+        return None
+
+    # Convert to float and calculate area
+    mask_float = mask.float()
+    area = torch.sum(mask_float)
+
+    return int(area.item())
+
+
+def mean_coordinates_of_mask(path_to_mask):
+    """
+    Calculate the mean coordinates of a binary mask.
+
+    Args:
+        path_to_mask (Path): Path to the binary mask image.
+
+    Returns:
+        tuple: Mean x and y coordinates of the mask.
+    """
+    mask = torch.load(path_to_mask)
+    if mask is None:
+        print(f"Error: Could not read mask from {path_to_mask}")
+        return None
+
+    mask_float = mask.float()
+
+    height, width = mask_float.shape[1:]
+
+    x_coords = torch.arange(width)
+    column_sums = mask_float[0].sum(dim=0)
+
+    # Weighted sum of x * column_sums
+    x_numerator = (x_coords * column_sums).sum()
+    x_denominator = column_sums.sum()
+    center_x = x_numerator / (x_denominator + 1e-8)  # Avoid division by zero
+
+    y_coords = torch.arange(height)
+    row_sums = mask_float[0].sum(dim=1)
+
+    # Weighted sum of y * row_sums
+    y_numerator = (y_coords * row_sums).sum()
+    y_denominator = row_sums.sum()
+    center_y = y_numerator / (y_denominator + 1e-8)  # Avoid division by zero
+
+    return center_x.round().int().item(), center_y.round().int().item()
+
+
+def track_object_path(video_path, output_path):
+    """
+    Track an object in a video and visualize its path with speed calculation.
+
+    Args:
+        video_path (str): Path to the input video file.
+        output_path (Path): Path to save the output video with tracking.
+    """
+    # TODO change video_path to Path
     # Open video capture
     cap = cv2.VideoCapture(video_path)
 
@@ -108,24 +176,14 @@ def track_object_path(video_path, output_path=None):
     # Set up video writer if output path is provided
     if output_path:
         fourcc = cv2.VideoWriter.fourcc("m", "p", "4", "v")
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        print(f"Output video will be saved to: {output_path}")
-
-    # Initialize tracker (you can use different trackers)
-    tracker = cv2.TrackerCSRT.create()
+        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+        print(f"Output video will be saved to: {str(output_path)}")
 
     # Read first frame
     ret, frame = cap.read()
     if not ret:
         print("Error: Cannot read video")
         return
-
-    # Select ROI (Region of Interest) - the object to track
-    bbox = cv2.selectROI("Select Object", frame, False)
-    cv2.destroyWindow("Select Object")
-
-    # Initialize tracker with first frame and bounding box
-    tracker.init(frame, bbox)
 
     # Store path points and timestamps for speed calculation
     path_points = []
@@ -138,18 +196,11 @@ def track_object_path(video_path, output_path=None):
         if not ret:
             break
 
-        frame_count += 1
-
-        # Update tracker
-        success, bbox = tracker.update(frame)
-
-        if success:
-            # Draw bounding box
-            (x, y, w, h) = [int(v) for v in bbox]
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-            # Calculate center point of the object
-            center = (int(x + w / 2), int(y + h / 2))
+        # Calculate center point of the object
+        center = mean_coordinates_of_mask(
+            Path(f"../sam/runs/track7/mask_tensors/{frame_count:05d}_1_mask.pt")
+        )
+        if center is not None:
             path_points.append(center)
             timestamps.append(frame_count / fps)
 
@@ -160,19 +211,16 @@ def track_object_path(video_path, output_path=None):
                         frame, path_points[i - 1], path_points[i], (0, 255, 255), 3
                     )
 
+            # Draw smoother path
+            # if len(path_points) > 1:
+            #     for i in range(1, len(path_points), 5):
+            #         if i - 5 >= 0 and i % 2 == 0:
+            #             cv2.line(
+            #                 frame, path_points[i - 5], path_points[i], (255, 255, 0), 3
+            #             )
+
             # Draw current center point
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
-        else:
-            # If tracking fails, try to reinitialize or handle the failure
-            cv2.putText(
-                frame,
-                "Tracking lost",
-                (10, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 0, 255),
-                2,
-            )
 
         # Display frame
         cv2.imshow("Object Tracking with Path", frame)
@@ -185,6 +233,8 @@ def track_object_path(video_path, output_path=None):
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
+        frame_count += 1
+
     # Cleanup
     cap.release()
     if output_path:
@@ -192,7 +242,9 @@ def track_object_path(video_path, output_path=None):
     cv2.destroyAllWindows()
 
     if len(path_points) > 1:
-        create_speed_graph(path_points, timestamps, "./output/track7/speed_graph.png")
+        create_speed_graph(
+            path_points, timestamps, output_path.parent / "speed_graph.png"
+        )
 
 
 def convert_mask_to_bounding_box(mask_path):
@@ -224,7 +276,9 @@ def main():
     track_number = 7
     track = f"track{track_number}"
     Path(f"./output/{track}").mkdir(parents=True, exist_ok=True)
-    track_object_path(f"../sam/runs/{track}/video.mp4", f"./output/{track}/path.mp4")
+    track_object_path(
+        f"../sam/runs/{track}/video.mp4", Path(f"./output/{track}/path.mp4")
+    )
     # TODO refactor to move create_speed_graph to main; for now DON'T FORGET TO CHANGE THE OUTPUT PATH
     print("Video processing complete!")
 
