@@ -10,7 +10,42 @@ import numpy as np
 import torch
 from pathlib import Path
 import os
+import enum
+from jaxtyping import Int, Float, Array
 
+class SAMModels(enum.Enum):
+    TINY = "sam2.1_hiera_tiny"
+    SMALL = "sam2.1_hiera_small"
+    BASE = "sam2.1_hiera_base_plus"
+    LARGE = "sam2.1_hiera_large"
+
+class SAMHandler:
+    model: SAMModels
+    
+    def __init__(self, model: SAMModels | str):
+        """
+        Initialize the SAMHandler with a specified model.
+
+        Args:
+            model: The SAM model to use, either as a SAMModels enum or a string.
+        """
+        raise NotImplementedError
+        
+    def request_prompt(self, prompt: str):
+        """Request a prompt from the user.
+
+        Args:
+            prompt: The prompt to display to the user.
+        """
+        raise NotImplementedError
+
+    def analyze_videos(self, frame_direcetory: str, prompt: Float[Array, " n_embed"]) -> list[tuple[Int, Int, Float[Array, "H W"]]]:
+        raise NotImplementedError
+        
+    def add_new_points_or_box():
+        raise NotImplementedError
+
+    
 
 def show_mask(mask, ax, obj_id=None, random_color=False):
     """

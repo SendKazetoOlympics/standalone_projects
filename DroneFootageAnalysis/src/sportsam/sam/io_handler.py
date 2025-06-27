@@ -9,6 +9,16 @@ import subprocess
 from pathlib import Path
 import pandas as pd
 
+class IOHandler:
+    
+    def __init__(self):
+        pass
+
+    def extract_frames_from_videos(self, video_path: list[str]):
+        raise NotImplementedError("Method not implemented yet.")
+
+    def extract_frames_from_file_list(self, manifest: str):
+        raise NotImplementedError("Method not implemented yet.")
 
 def extract_frames_from_video(video_path, quality=2):
     """
