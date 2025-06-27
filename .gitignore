@@ -52,3 +52,4 @@ Thumbs.db
 *.csv
 oliver_journal.md
 DroneFootageAnalysis/sam/checkpoints/download_ckpts.sh
+*__pycache__
