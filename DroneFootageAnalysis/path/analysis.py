@@ -413,7 +413,7 @@ def convert_mask_to_bounding_box(mask_path):
 def main():
     # convert_mask_to_bounding_box("../sam/runs/track5/mask/00000_mask.jpg")
 
-    track_number = 9
+    track_number = 10
     track = f"track{track_number}"
     Path(f"./output/{track}").mkdir(parents=True, exist_ok=True)
     track_object_path(

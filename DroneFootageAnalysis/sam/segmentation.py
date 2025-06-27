@@ -7,7 +7,7 @@ from pathlib import Path
 
 from sam_utils import *
 
-# TODO right now all the paths are hardcoded, make them configurable, for now run them from within the `sam` dirtory
+# TODO right now some the paths are hardcoded, make them configurable, for now run them from within the `sam` dirtory
 
 # Select the device for computation
 if torch.cuda.is_available():
@@ -83,6 +83,8 @@ cap.release()
 cv2.destroyAllWindows()
 
 
+# TODO maybe make this into an opencv loop that shows you the effects of your click
+# TODO allow for different frame that's not just the first one?
 # For labels, `1` means positive click and `0` means negative click
 labels = np.array([1] * len(click_coords), np.int32)
 
@@ -97,6 +99,7 @@ _, _, _ = predictor.add_new_points_or_box(
 )
 
 # Add a click for the pit
+# TODO current functionality only allows for one object
 # points = np.array([[1080, 500]], dtype=np.float32)
 # _, _, _ = predictor.add_new_points_or_box(
 #     inference_state=inference_state,
