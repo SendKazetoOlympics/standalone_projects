@@ -7,75 +7,69 @@ directory management, and CSV file output.
 
 import subprocess
 from pathlib import Path
-import pandas as pd
+import csv
+
 
 class IOHandler:
-    
+
     def __init__(self):
         pass
 
-    def extract_frames_from_videos(self, video_path: list[str]):
-        raise NotImplementedError("Method not implemented yet.")
+    def extract_frames_from_videos(self, video_paths: list[str]) -> Path:
+        # TODO docstrings
+        import decord
+        import imageio
+
+        if video_paths is None or len(video_paths) == 0:
+            raise ValueError("No video paths provided for frame extraction.")
+
+        temp_dir = Path.cwd() / "tmp"
+        temp_dir.mkdir(exist_ok=True)
+
+        frame_count = 0
+
+        for video_path in video_paths:
+            video_path_obj = Path(video_path)
+            if not video_path_obj.exists():
+                raise FileNotFoundError(f"Video file {video_path} not found.")
+            elif video_path_obj.suffix.lower() in [".mp4", ".avi", ".mov"]:
+                vr = decord.VideoReader(video_path_obj)
+
+                for frame in vr:
+                    imageio.imwrite(
+                        temp_dir / f"{frame_count:06d}.jpg", frame.asnumpy()
+                    )
+                    frame_count += 1
+            elif video_path_obj.is_dir():
+                frames = [
+                    p
+                    for p in video_path_obj.iterdir()
+                    if p.suffix in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+                ]
+                for frame in frames:
+                    # TODO implement copy frame to temp_dir
+                    frame_count += 1
+
+            print(f"Extracted frames from {video_path}...")
+
+        raise NotImplementedError()
+        # return temp_dir
 
     def extract_frames_from_file_list(self, manifest: str):
         raise NotImplementedError("Method not implemented yet.")
 
-def extract_frames_from_video(video_path, quality=2):
-    """
-    Extract JPEG frames from a video file using ffmpeg.
-
-    Args:
-        video_path (Path): Path to the input video file
-        quality (int): JPEG quality (1-31, lower is better quality)
-
-    Returns:
-        int: Number of frames extracted, or False if an error occurred
-    """
-
-    # Ensure input directory exists
-    if not video_path.exists():
-        raise FileNotFoundError(f"Video file {video_path} does not exist.")
-
-    # Ensure output directory exists
-    output_path = video_path.parent / video_path.stem
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    # Construct ffmpeg command
-    output_pattern = output_path / "%05d.jpg"
-
-    cmd = [
-        "ffmpeg",
-        "-i",
-        str(video_path),
-        "-q:v",
-        str(quality),
-        "-start_number",
-        "0",
-        str(output_pattern),
-    ]
-
-    try:
-        print(f"Extracting frames from '{video_path}' to '{output_path}'...")
-        print(f"Command: {' '.join(cmd)}")
-
-        # Run ffmpeg command
-        _ = subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-        # Count extracted frames
-        frame_count = len(list(output_path.glob("*.jpg")))
-        print(f"Successfully extracted {frame_count} frames to '{output_path}'")
-
-        return frame_count
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error running ffmpeg: {e}")
-        print(f"stderr: {e.stderr}")
-        return False
-    except FileNotFoundError:
-        print(
-            "Error: ffmpeg not found. Please install ffmpeg and ensure it's in your PATH."
-        )
-        return False
+    def clear_tmp(self) -> None:
+        """Clear the temporary directory where frames are stored."""
+        tmp_dir = Path.cwd() / "tmp"
+        if tmp_dir.exists():
+            for item in tmp_dir.iterdir():
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    item.rmdir()
+            print(f"Cleared temporary directory: {tmp_dir}")
+        else:
+            print(f"Temporary directory {tmp_dir} does not exist.")
 
 
 def create_video_from_frames(input_dir, frame_format, output_file, framerate):

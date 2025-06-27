@@ -27,21 +27,25 @@ class SAMHandler:
     model: SAMModels
 
     def __init__(self, model: SAMModels | str):
-        """
-        Initialize the SAMHandler with a specified model.
+        """Initialize the SAMHandler with a specified model.
 
         Args:
             model: The SAM model to use, either as a SAMModels enum or a string.
+
         """
         if isinstance(model, str):
             model = SAMModels(model)
         self.model = model
 
-    def request_prompt(self, prompt: str):
+    # def request_prompt(self, prompt: str):
+    def request_prompt(self, prompt: tuple[int, int]):
         """Request a prompt from the user.
+        TODO: Ideally a vector
+        For now, click points.
 
         Args:
             prompt: The prompt to display to the user.
+
         """
         raise NotImplementedError
 
@@ -50,19 +54,16 @@ class SAMHandler:
     ) -> list[tuple[Int, Int, Float[Tensor, "H W"]]]:
         raise NotImplementedError
 
-    def add_new_points_or_box():
-        raise NotImplementedError
-
 
 def show_mask(mask, ax, obj_id=None, random_color=False):
-    """
-    Show a mask on a matplotlib axis with a specific color.
+    """Show a mask on a matplotlib axis with a specific color.
 
     Args:
         mask: A binary mask of shape (H, W) or (1, H, W).
         ax: The matplotlib axis to draw on.
         obj_id: Optional object ID for color mapping.
         random_color: If True, use a random color instead of a fixed one.
+
     """
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
