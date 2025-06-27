@@ -10,5 +10,4 @@ dependencies = [
     "opencv-contrib-python>=4.11.0.86",
     "pynvim>=0.5.2",
     "sam2>=1.1.0",
-    "ultralytics>=8.3.155",
 ]
