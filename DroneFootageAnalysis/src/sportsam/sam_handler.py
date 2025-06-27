@@ -4,14 +4,17 @@ sam_handler.py
 Handles interaction with the SAM model, including mask visualization, user input, and main segmentation logic.
 """
 
+from sam2.build_sam import build_sam2_video_predictor
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch import Tensor
 from pathlib import Path
 import os
 import enum
-from jaxtyping import Int, Float, Array
+from jaxtyping import Int, Float
+
 
 class SAMModels(enum.Enum):
     TINY = "sam2.1_hiera_tiny"
@@ -19,9 +22,10 @@ class SAMModels(enum.Enum):
     BASE = "sam2.1_hiera_base_plus"
     LARGE = "sam2.1_hiera_large"
 
+
 class SAMHandler:
     model: SAMModels
-    
+
     def __init__(self, model: SAMModels | str):
         """
         Initialize the SAMHandler with a specified model.
@@ -29,8 +33,10 @@ class SAMHandler:
         Args:
             model: The SAM model to use, either as a SAMModels enum or a string.
         """
-        raise NotImplementedError
-        
+        if isinstance(model, str):
+            model = SAMModels(model)
+        self.model = model
+
     def request_prompt(self, prompt: str):
         """Request a prompt from the user.
 
@@ -39,13 +45,14 @@ class SAMHandler:
         """
         raise NotImplementedError
 
-    def analyze_videos(self, frame_direcetory: str, prompt: Float[Array, " n_embed"]) -> list[tuple[Int, Int, Float[Array, "H W"]]]:
+    def analyze_videos(
+        self, frame_direcetory: str, prompt: Float[Tensor, " n_embed"]
+    ) -> list[tuple[Int, Int, Float[Tensor, "H W"]]]:
         raise NotImplementedError
-        
+
     def add_new_points_or_box():
         raise NotImplementedError
 
-    
 
 def show_mask(mask, ax, obj_id=None, random_color=False):
     """
@@ -78,18 +85,17 @@ def mouse_callback(event, x, y, _flags, _param):
         print(f"Click at: ({x}, {y})")
 
 
+# from sam_utils import (
+#     extract_frames_from_video,
+#     add_masks_to_frame,
+#     add_masks_to_blank,
+#     make_dir,
+#     create_video_from_frames,
+# )
 def run_sam_segmentation():
     """
     Main logic for running SAM segmentation on a video.
     """
-    from sam2.build_sam import build_sam2_video_predictor
-    from sam_utils import (
-        extract_frames_from_video,
-        add_masks_to_frame,
-        add_masks_to_blank,
-        make_dir,
-        create_video_from_frames,
-    )
 
     # Select the device for computation
     if torch.cuda.is_available():
