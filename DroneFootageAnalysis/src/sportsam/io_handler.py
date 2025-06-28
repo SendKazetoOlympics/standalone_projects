@@ -9,6 +9,8 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
+import decord
+import imageio
 import csv
 
 
@@ -26,9 +28,6 @@ class IOHandler:
             Path: Path to the temporary directory containing extracted frames.
 
         """
-        import decord
-        import imageio
-
         if video_paths is None or len(video_paths) == 0:
             raise ValueError("No video paths provided for frame extraction.")
 
@@ -38,28 +37,35 @@ class IOHandler:
 
         for video_path in video_paths:
             video_path_obj = Path(video_path)
+
             if not video_path_obj.exists():
                 raise FileNotFoundError(f"Video file {video_path} not found.")
-            elif video_path_obj.suffix.lower() in [".mp4", ".avi", ".mov"]:
-                vr = decord.VideoReader(video_path_obj)
+            if not video_path_obj.is_file():
+                raise ValueError(
+                    f"Unsupported video file format: {video_path_obj.suffix}. Please provide either a video file or a directory containing JPEG images."
+                )
 
+            if video_path_obj.suffix.lower() in {".mp4", ".avi", ".mov"}:
+                vr = decord.VideoReader(video_path_obj)
                 for frame in vr:
                     imageio.imwrite(
                         temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
             elif video_path_obj.is_dir():
-                frames = [
-                    p
-                    for p in video_path_obj.iterdir()
-                    if p.suffix in [".jpg", ".jpeg", ".JPG", ".JPEG"]
-                ]
+                frames = sorted(
+                    [
+                        p
+                        for p in video_path_obj.iterdir()
+                        if p.suffix in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+                    ]
+                )
                 for frame in frames:
                     shutil.copy(frame, temp_dir / f"{frame_count:05d}.jpg")
                     frame_count += 1
             else:
                 raise ValueError(
-                    f"Unsupported video file format: {video_path_obj.suffix}. Please provide either a video file or a directory containing JPEG images."
+                    f"Unsupported video file format: {video_path_obj.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
                 )
 
             print(f"Extracted frames from {video_path}...")
