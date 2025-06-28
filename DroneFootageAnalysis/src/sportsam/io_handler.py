@@ -19,7 +19,7 @@ class IOHandler:
     def __init__(self):
         pass
 
-    def extract_frames_from_videos(self, video_paths: list[str]) -> Path:
+    def extract_frames_from_videos(self, videos: list[str]) -> Path:
         """Extract frames from a list of video files or directories containing JPEG images.
         Args:
             video_paths (list[str]): List of paths to video files or directories containing JPEG images.
@@ -28,35 +28,35 @@ class IOHandler:
             Path: Path to the temporary directory containing extracted frames.
 
         """
-        if video_paths is None or len(video_paths) == 0:
+        if len(videos) == 0:
             raise ValueError("No video paths provided for frame extraction.")
 
         temp_dir = Path(tempfile.mkdtemp())
 
         frame_count = 0
 
-        for video_path in video_paths:
-            video_path_obj = Path(video_path)
+        for video in videos:
+            video_path = Path(video)
 
-            if not video_path_obj.exists():
+            if not video_path.exists():
                 raise FileNotFoundError(f"Video file {video_path} not found.")
-            if not video_path_obj.is_file():
+            if not video_path.is_file():
                 raise ValueError(
-                    f"Unsupported video file format: {video_path_obj.suffix}. Please provide either a video file or a directory containing JPEG images."
+                    f"Unsupported video file format: {video_path.suffix}. Please provide either a video file or a directory containing JPEG images."
                 )
 
-            if video_path_obj.suffix.lower() in {".mp4", ".avi", ".mov"}:
-                vr = decord.VideoReader(video_path_obj)
+            if video_path.suffix.lower() in {".mp4", ".avi", ".mov"}:
+                vr = decord.VideoReader(video_path)
                 for frame in vr:
                     imageio.imwrite(
                         temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
-            elif video_path_obj.is_dir():
+            elif video_path.is_dir():
                 frames = sorted(
                     [
                         p
-                        for p in video_path_obj.iterdir()
+                        for p in video_path.iterdir()
                         if p.suffix in [".jpg", ".jpeg", ".JPG", ".JPEG"]
                     ]
                 )
@@ -65,15 +65,41 @@ class IOHandler:
                     frame_count += 1
             else:
                 raise ValueError(
-                    f"Unsupported video file format: {video_path_obj.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
+                    f"Unsupported video file format: {video_path.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
                 )
 
             print(f"Extracted frames from {video_path}...")
 
         return temp_dir
 
-    def extract_frames_from_file_list(self, manifest: str):
-        raise NotImplementedError("Method not implemented yet.")
+    def extract_frames_from_file_list(self, manifest: str) -> Path:
+        """Extract frames from a list of video files specified in a manifest file.
+        Args:
+            manifest (Path): Path to the CSV manifest file containing video file paths.
+
+        Returns:
+            Path: Path to the temporary directory containing extracted frames.
+
+        """
+        manifest_path = Path(manifest)
+
+        if not manifest_path.exists():
+            raise FileNotFoundError(f"Manifest file {manifest} not found.")
+
+        videos = []
+
+        if not manifest_path.is_file():
+            raise ValueError(f"Manifest {manifest} is not a valid file.")
+        if manifest_path.suffix.lower() != ".csv":
+            raise ValueError(
+                f"Unsupported manifest file format: {manifest_path.suffix}. Please provide a CSV file."
+            )
+
+        with open(manifest, "r") as f:
+            reader = csv.reader(f)
+            videos = [row[0] for row in reader if row]
+
+        return self.extract_frames_from_videos(videos)
 
     def clear_tmp(self, temp_dir: Path) -> None:
         """Clear the temporary directory where frames are stored."""
