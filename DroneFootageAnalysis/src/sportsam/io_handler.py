@@ -72,7 +72,7 @@ class IOHandler:
 
         return temp_dir
 
-    def extract_frames_from_file_list(self, manifest: str) -> Path:
+    def extract_frames_from_manifest(self, manifest: str) -> Path:
         """Extract frames from a list of video files specified in a manifest file.
         Args:
             manifest (Path): Path to the CSV manifest file containing video file paths.

@@ -8,8 +8,21 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run SportSAM analysis on video files."
     )
-    parser.add_argument(
-        "video_files", nargs="+", help="List of video files to analyze."
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "-f",
+        "--files",
+        nargs="+",
+        help="List of video files to analyze.",
+        dest="video_files",
+    )
+    group.add_argument(
+        "-m",
+        "--manifest",
+        type=str,
+        default="manifest.csv",
+        help="Path to the manifest file containing list of videos.",
+        dest="manifest",
     )
     parser.add_argument(
         "--model", type=str, default="sam2.1_hiera_small", help="SAM model to use."
@@ -27,5 +40,7 @@ def main():
     # sam_handler = SAMHandler(model=args.model)
     # analyzer = Analyzer()
 
-    io_handler.extract_frames_from_videos(args.video_files)
-
+    if args.video_files:
+        io_handler.extract_frames_from_videos(args.video_files)
+    elif args.manifest:
+        io_handler.extract_frames_from_manifest(args.manifest)

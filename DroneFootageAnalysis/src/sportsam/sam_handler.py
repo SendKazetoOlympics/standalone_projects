@@ -23,6 +23,9 @@ class SAMModels(enum.Enum):
     LARGE = "sam2.1_hiera_large"
 
 
+# TODO checkpoints
+
+
 class SAMHandler:
     model: SAMModels
 
@@ -53,6 +56,9 @@ class SAMHandler:
         self, frame_direcetory: str, prompt: Float[Tensor, " n_embed"]
     ) -> list[tuple[Int, Int, Float[Tensor, "H W"]]]:
         raise NotImplementedError
+
+
+##### TODO refactor everything below #####
 
 
 def show_mask(mask, ax, obj_id=None, random_color=False):
