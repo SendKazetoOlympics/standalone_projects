@@ -94,6 +94,6 @@ def test_clear_temp_dir(tmp_path, io_handler):
 
 def test_clear_temp_dir_nonexistent(io_handler, tmp_path, capsys):
     non_dir = tmp_path / "notadir"
-    io_handler.clear_temp_dir(non_dir)
+    io_handler.clear_tmp(non_dir)
     captured = capsys.readouterr()
     assert "does not exist" in captured.out
