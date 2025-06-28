@@ -4,41 +4,101 @@ sam_handler.py
 Handles interaction with the SAM model, including mask visualization, user input, and main segmentation logic.
 """
 
-from sam2.build_sam import build_sam2_video_predictor
+import enum
+import urllib.request
+from pathlib import Path
+from typing import Any
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch import Tensor
-from pathlib import Path
-import os
-import enum
 from jaxtyping import Int, Float
+from sam2.build_sam import build_sam2_video_predictor
+from sam2.sam2_video_predictor import SAM2VideoPredictor
+from torch import Tensor
 
 
 class SAMModels(enum.Enum):
-    TINY = "sam2.1_hiera_tiny"
-    SMALL = "sam2.1_hiera_small"
-    BASE = "sam2.1_hiera_base_plus"
-    LARGE = "sam2.1_hiera_large"
-
-
-# TODO checkpoints
+    TINY = "sam2.1_hiera_t,yaml", "sam2.1_hiera_tiny.pt"
+    SMALL = "sam2.1_hiera_s.yaml", "sam2.1_hiera_small.pt"
+    BASE_PLUS = "sam2.1_hiera_b+.yaml", "sam2.1_hiera_base_plus.pt"
+    LARGE = "sam2.1_hiera_l.yaml", "sam2.1_hiera_large.pt"
 
 
 class SAMHandler:
     model: SAMModels
+    predictor: SAM2VideoPredictor
+    inference_state: dict[str, Any]
+    frames_path: Path
 
-    def __init__(self, model: SAMModels | str):
-        """Initialize the SAMHandler with a specified model.
+    def __init__(
+        self, frames_path: Path | str, model: SAMModels | str = SAMModels.SMALL
+    ):
+        """Initialize the SAMHandler with the specified frames directory and model.
 
         Args:
-            model: The SAM model to use, either as a SAMModels enum or a string.
+            frames_path (Path | str): Path to the directory containing extracted video frames.
+            model (SAMModels | str, optional): The SAM model variant to use. Can be a SAMModels enum or a string matching one of its values. Defaults to SAMModels.SMALL.
 
+        Raises:
+            ValueError: If the provided model string does not correspond to a valid SAMModels enum member.
         """
+        if isinstance(frames_path, str):
+            frames_path = Path(frames_path)
+        self.frames_path = frames_path
         if isinstance(model, str):
             model = SAMModels(model)
         self.model = model
+        print(f"Using model: {model}")
+
+        # TODO where to put these?
+        # Download config and checkpoint
+        config_path = Path(f"configs/{self.model.value[0]}")
+        config_path.mkdir(parents=True, exist_ok=True)
+        checkpoint_path = Path(f"checkpoints/{self.model.value[1]}")
+        checkpoint_path.mkdir(parents=True, exist_ok=True)
+
+        base_url = "https://dl.fbaipublicfiles.com/segment_anything_2/092824/"
+        config_url = f"{base_url}/{self.model.value[0]}"
+        checkpoint_url = f"{base_url}/{self.model.value[1]}"
+
+        if not config_path.exists():
+            print(f"Downloading {self.model} model config to {config_path}...")
+            urllib.request.urlretrieve(config_url, config_path)
+            print("Download complete.")
+        else:
+            print(f"{self.model} model config found.")
+
+        if not checkpoint_path.exists():
+            print(f"Downloading {self.model} model checkpoint to {config_path}...")
+            urllib.request.urlretrieve(checkpoint_url, config_path)
+            print("Download complete.")
+        else:
+            print(f"{self.model} model checkpoints found.")
+
+        # Select the device for computation
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            device = torch.device("mps")
+        else:
+            device = torch.device("cpu")
+
+        if device.type == "cuda":
+            torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
+            if torch.cuda.get_device_properties(0).major >= 8:
+                torch.backends.cuda.matmul.allow_tf32 = True
+                torch.backends.cudnn.allow_tf32 = True
+        elif device.type == "mps":
+            print(
+                "Support for MPS devices is preliminary. SAM 2 is trained with CUDA and might give numerically different outputs and sometimes degraded performance on MPS. See e.g. https://github.com/pytorch/pytorch/issues/84936 for a discussion."
+            )
+        print(f"Using device: {device}")
+
+        self.predictor = build_sam2_video_predictor(
+            config_path, checkpoint_path, device=device.type
+        )
 
     # def request_prompt(self, prompt: str):
     def request_prompt(self, prompt: tuple[int, int]):
@@ -53,7 +113,7 @@ class SAMHandler:
         raise NotImplementedError
 
     def analyze_videos(
-        self, frame_direcetory: str, prompt: Float[Tensor, " n_embed"]
+        self, frame_direcetory: str, prompt: Float[Tensor, "n_embed"]
     ) -> list[tuple[Int, Int, Float[Tensor, "H W"]]]:
         raise NotImplementedError
 
