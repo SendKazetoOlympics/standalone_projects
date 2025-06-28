@@ -11,5 +11,12 @@ dependencies = [
     "jaxtyping>=0.3.2",
     "matplotlib>=3.10.3",
     "opencv-python>=4.11.0.86",
+    "pytest>=8.4.1",
     "sam2>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "black"
 ]

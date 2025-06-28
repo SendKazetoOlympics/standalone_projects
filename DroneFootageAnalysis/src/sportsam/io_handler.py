@@ -40,10 +40,6 @@ class IOHandler:
 
             if not video_path.exists():
                 raise FileNotFoundError(f"Video file {video_path} not found.")
-            if not video_path.is_file():
-                raise ValueError(
-                    f"Unsupported video file format: {video_path.suffix}. Please provide either a video file or a directory containing JPEG images."
-                )
 
             if video_path.suffix.lower() in {".mp4", ".avi", ".mov"}:
                 vr = decord.VideoReader(video_path)
@@ -101,7 +97,7 @@ class IOHandler:
 
         return self.extract_frames_from_videos(videos)
 
-    def clear_tmp(self, temp_dir: Path) -> None:
+    def clear_temp_dir(self, temp_dir: Path) -> None:
         """Clear the temporary directory where frames are stored."""
         if temp_dir.exists() and temp_dir.is_dir():
             shutil.rmtree(temp_dir)
