@@ -140,42 +140,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dronefootageanalysis"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "decord" },
-    { name = "imageio" },
-    { name = "ipython" },
-    { name = "jaxtyping" },
-    { name = "matplotlib" },
-    { name = "opencv-python" },
-    { name = "pytest" },
-    { name = "sam2" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "black" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'dev'" },
-    { name = "decord", specifier = ">=0.6.0" },
-    { name = "imageio", specifier = ">=2.37.0" },
-    { name = "ipython", specifier = ">=9.3.0" },
-    { name = "jaxtyping", specifier = ">=0.3.2" },
-    { name = "matplotlib", specifier = ">=3.10.3" },
-    { name = "opencv-python", specifier = ">=4.11.0.86" },
-    { name = "pytest", specifier = ">=8.4.1" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
-    { name = "sam2", specifier = ">=1.1.0" },
-]
-provides-extras = ["dev"]
-
-[[package]]
 name = "executing"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -854,11 +818,11 @@ wheels = [
 
 [[package]]
 name = "pygments"
-version = "2.19.1"
+version = "2.19.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7c/2d/c3338d48ea6cc0feb8446d8e6937e1408088a72a39937982cc6111d17f84/pygments-2.19.1.tar.gz", hash = "sha256:61c16d2a8576dc0649d9f39e089b5f02bcd27fba10d8fb4dcc28173f7a45151f", size = 4968581, upload-time = "2025-01-06T17:26:30.443Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c", size = 1225293, upload-time = "2025-01-06T17:26:25.553Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
 ]
 
 [[package]]
@@ -951,6 +915,43 @@ dependencies = [
     { name = "tqdm" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ce/11/d07fc96688f731a85de6d5260e98b709051eded2b7b5667ae292530bcf90/sam2-1.1.0.tar.gz", hash = "sha256:7e0ea252d43c10d853e3acfce0b5770ac683c30481bd6de311300e9d44f45b74", size = 152836, upload-time = "2024-12-21T09:55:17.154Z" }
+
+[[package]]
+name = "samsport"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "decord" },
+    { name = "imageio" },
+    { name = "jaxtyping" },
+    { name = "matplotlib" },
+    { name = "opencv-python" },
+    { name = "sam2" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "black" },
+    { name = "ipython" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "decord", specifier = ">=0.6.0" },
+    { name = "imageio", specifier = ">=2.37.0" },
+    { name = "jaxtyping", specifier = ">=0.3.2" },
+    { name = "matplotlib", specifier = ">=3.10.3" },
+    { name = "opencv-python", specifier = ">=4.11.0.86" },
+    { name = "sam2", specifier = ">=1.1.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black" },
+    { name = "ipython", specifier = ">=9.3.0" },
+    { name = "pytest", specifier = ">=8.4.1" },
+]
 
 [[package]]
 name = "setuptools"

@@ -1,31 +1,31 @@
-# TODO temporary fix, hopefully will not need
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 import shutil
 import csv
 import pytest
 
 from sportsam.io_handler import IOHandler
 
+
 @pytest.fixture
 def io_handler():
     return IOHandler()
+
 
 def test_extract_frames_from_videos_empty_list(io_handler):
     with pytest.raises(ValueError, match="No video paths provided"):
         io_handler.extract_frames_from_videos([])
 
+
 def test_extract_frames_from_videos_file_not_found(io_handler):
     with pytest.raises(FileNotFoundError):
         io_handler.extract_frames_from_videos(["/nonexistent/file.mp4"])
+
 
 def test_extract_frames_from_videos_unsupported_format(io_handler, tmp_path):
     fake_file = tmp_path / "file.txt"
     fake_file.write_text("not a video")
     with pytest.raises(ValueError):
         io_handler.extract_frames_from_videos([str(fake_file)])
+
 
 def test_extract_frames_from_videos_supported_video(monkeypatch, io_handler, tmp_path):
     # Create a fake .mp4 file
@@ -38,14 +38,18 @@ def test_extract_frames_from_videos_supported_video(monkeypatch, io_handler, tmp
             class DummyFrame:
                 def asnumpy(self):
                     import numpy as np
-                    return np.zeros((10, 10, 3), dtype='uint8')
+
+                    return np.zeros((10, 10, 3), dtype="uint8")
+
             return iter([DummyFrame(), DummyFrame()])
+
     monkeypatch.setattr("decord.VideoReader", lambda path: DummyVR())
     monkeypatch.setattr("imageio.imwrite", lambda path, arr: None)
 
     temp_dir = io_handler.extract_frames_from_videos([str(video_file)])
     assert temp_dir.exists()
     shutil.rmtree(temp_dir)
+
 
 def test_extract_frames_from_videos_jpeg_dir(monkeypatch, io_handler, tmp_path):
     # Create a directory with JPEGs
@@ -61,6 +65,7 @@ def test_extract_frames_from_videos_jpeg_dir(monkeypatch, io_handler, tmp_path):
     assert temp_dir.exists()
     shutil.rmtree(temp_dir)
 
+
 def test_extract_frames_from_manifest(tmp_path, monkeypatch, io_handler):
     # Create a manifest CSV
     manifest = tmp_path / "manifest.csv"
@@ -75,15 +80,18 @@ def test_extract_frames_from_manifest(tmp_path, monkeypatch, io_handler):
     result = io_handler.extract_frames_from_manifest(str(manifest))
     assert result == "called"
 
+
 def test_extract_frames_from_manifest_file_not_found(io_handler):
     with pytest.raises(FileNotFoundError):
         io_handler.extract_frames_from_manifest("/nonexistent/manifest.csv")
+
 
 def test_extract_frames_from_manifest_wrong_format(tmp_path, io_handler):
     txt_file = tmp_path / "manifest.txt"
     txt_file.write_text("not a csv")
     with pytest.raises(ValueError):
         io_handler.extract_frames_from_manifest(str(txt_file))
+
 
 def test_clear_temp_dir(tmp_path, io_handler):
     tmp_dir = tmp_path / "todelete"
@@ -92,8 +100,9 @@ def test_clear_temp_dir(tmp_path, io_handler):
     io_handler.clear_temp_dir(tmp_dir)
     assert not tmp_dir.exists()
 
+
 def test_clear_temp_dir_nonexistent(io_handler, tmp_path, capsys):
     non_dir = tmp_path / "notadir"
-    io_handler.clear_tmp(non_dir)
+    io_handler.clear_temp_dir(non_dir)
     captured = capsys.readouterr()
     assert "does not exist" in captured.out

@@ -1,22 +1,31 @@
 [project]
-name = "dronefootageanalysis"
+name = "samsport"
 version = "0.1.0"
-description = "Add your description here"
+description = "Use AI to analyze sports footage"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "decord>=0.6.0",
     "imageio>=2.37.0",
-    "ipython>=9.3.0",
     "jaxtyping>=0.3.2",
     "matplotlib>=3.10.3",
     "opencv-python>=4.11.0.86",
-    "pytest>=8.4.1",
     "sam2>=1.1.0",
 ]
 
-[project.optional-dependencies]
+[project.scripts]
+sportsam = "sportsam.cmd.run_sportsam:main"
+
+[dependency-groups]
 dev = [
-    "pytest>=7.4",
-    "black"
+    "ipython>=9.3.0",
+    "pytest>=8.4.1",
+    "black",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/samsport"]
