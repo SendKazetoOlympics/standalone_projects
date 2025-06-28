@@ -22,8 +22,12 @@ class Analyzer:
         if area == 0:
             return (0, 0)
         height, width = mask.shape
-        x_coords = torch.arange(width, device=mask.device).view(1, -1).expand(height, width)
-        y_coords = torch.arange(height, device=mask.device).view(-1, 1).expand(height, width)
+        x_coords = (
+            torch.arange(width, device=mask.device).view(1, -1).expand(height, width)
+        )
+        y_coords = (
+            torch.arange(height, device=mask.device).view(-1, 1).expand(height, width)
+        )
         x = (x_coords * mask).sum() / area
         y = (y_coords * mask).sum() / area
         return int(round(x.item())), int(round(y.item()))
@@ -36,13 +40,17 @@ class Analyzer:
         if area == 0:
             return (0, 0, 0)
         height, width = mask.shape
-        y_coords = torch.arange(height, device=mask.device).view(-1, 1).expand(height, width)
-        x_coords = torch.arange(width, device=mask.device).view(1, -1).expand(height, width)
+        y_coords = (
+            torch.arange(height, device=mask.device).view(-1, 1).expand(height, width)
+        )
+        x_coords = (
+            torch.arange(width, device=mask.device).view(1, -1).expand(height, width)
+        )
         x = (x_coords * mask).sum() / area
         y = (y_coords * mask).sum() / area
         x_diff = x_coords - x
         y_diff = y_coords - y
-        xx = (x_diff ** 2 * mask).sum() / area
-        yy = (y_diff ** 2 * mask).sum() / area
+        xx = (x_diff**2 * mask).sum() / area
+        yy = (y_diff**2 * mask).sum() / area
         xy = (x_diff * y_diff * mask).sum() / area
         return int(round(xx.item())), int(round(yy.item())), int(round(xy.item()))
