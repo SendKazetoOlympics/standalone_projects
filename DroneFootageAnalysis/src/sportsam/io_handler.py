@@ -7,7 +7,6 @@ directory management, and CSV file output.
 
 import subprocess
 from pathlib import Path
-import tempfile
 import shutil
 import decord
 import imageio
@@ -19,19 +18,15 @@ class IOHandler:
     def __init__(self):
         pass
 
-    def extract_frames_from_videos(self, videos: list[str]) -> Path:
+    def extract_frames_from_videos(self, videos: list[str], output_dir: Path) -> None:
         """Extract frames from a list of video files or directories containing JPEG images.
         Args:
             video_paths (list[str]): List of paths to video files or directories containing JPEG images.
-
-        Returns:
-            Path: Path to the temporary directory containing extracted frames.
+            output_dir (Path): Path to the directory where extracted frames will be saved.
 
         """
         if len(videos) == 0:
             raise ValueError("No video paths provided for frame extraction.")
-
-        temp_dir = Path(tempfile.mkdtemp())
 
         frame_count = 0
 
@@ -45,7 +40,7 @@ class IOHandler:
                 vr = decord.VideoReader(video_path)
                 for frame in vr:
                     imageio.imwrite(
-                        temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
+                        output_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
             elif video_path.is_dir():
@@ -57,7 +52,7 @@ class IOHandler:
                     ]
                 )
                 for frame in frames:
-                    shutil.copy(frame, temp_dir / f"{frame_count:05d}.jpg")
+                    shutil.copy(frame, output_dir / f"{frame_count:05d}.jpg")
                     frame_count += 1
             else:
                 raise ValueError(
@@ -66,15 +61,11 @@ class IOHandler:
 
             print(f"Extracted frames from {video_path}...")
 
-        return temp_dir
-
-    def extract_frames_from_manifest(self, manifest: str) -> Path:
+    def extract_frames_from_manifest(self, manifest: str, output_dir: Path) -> None:
         """Extract frames from a list of video files specified in a manifest file.
         Args:
             manifest (Path): Path to the CSV manifest file containing video file paths.
-
-        Returns:
-            Path: Path to the temporary directory containing extracted frames.
+            output_dir (Path): Path to the directory where extracted frames will be saved.
 
         """
         manifest_path = Path(manifest)
@@ -95,16 +86,7 @@ class IOHandler:
             reader = csv.reader(f)
             videos = [row[0] for row in reader if row]
 
-        return self.extract_frames_from_videos(videos)
-
-    def clear_temp_dir(self, temp_dir: Path) -> None:
-        """Clear the temporary directory where frames are stored."""
-        if temp_dir.exists() and temp_dir.is_dir():
-            shutil.rmtree(temp_dir)
-        else:
-            print(
-                f"Temporary directory {temp_dir} does not exist or is not a directory."
-            )
+        self.extract_frames_from_videos(videos, output_dir)
 
 
 ##### TODO refactor everything below #####

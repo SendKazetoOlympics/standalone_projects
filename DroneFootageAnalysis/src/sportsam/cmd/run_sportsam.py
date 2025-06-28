@@ -1,4 +1,7 @@
 import argparse
+import tempfile
+from pathlib import Path
+
 from sportsam.io_handler import IOHandler
 from sportsam.sam_handler import SAMHandler
 from sportsam.analysis import Analyzer
@@ -40,7 +43,8 @@ def main():
     # sam_handler = SAMHandler(model=args.model)
     # analyzer = Analyzer()
 
-    if args.video_files:
-        io_handler.extract_frames_from_videos(args.video_files)
-    elif args.manifest:
-        io_handler.extract_frames_from_manifest(args.manifest)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        if args.video_files:
+            io_handler.extract_frames_from_videos(args.video_files, Path(temp_dir))
+        elif args.manifest:
+            io_handler.extract_frames_from_manifest(args.manifest, Path(temp_dir))
