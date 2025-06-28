@@ -7,6 +7,8 @@ directory management, and CSV file output.
 
 import subprocess
 from pathlib import Path
+import tempfile
+import shutil
 import csv
 
 
@@ -16,15 +18,21 @@ class IOHandler:
         pass
 
     def extract_frames_from_videos(self, video_paths: list[str]) -> Path:
-        # TODO docstrings
+        """Extract frames from a list of video files or directories containing JPEG images.
+        Args:
+            video_paths (list[str]): List of paths to video files or directories containing JPEG images.
+
+        Returns:
+            Path: Path to the temporary directory containing extracted frames.
+
+        """
         import decord
         import imageio
 
         if video_paths is None or len(video_paths) == 0:
             raise ValueError("No video paths provided for frame extraction.")
 
-        temp_dir = Path.cwd() / "tmp"
-        temp_dir.mkdir(exist_ok=True)
+        temp_dir = Path(tempfile.mkdtemp())
 
         frame_count = 0
 
@@ -37,7 +45,7 @@ class IOHandler:
 
                 for frame in vr:
                     imageio.imwrite(
-                        temp_dir / f"{frame_count:06d}.jpg", frame.asnumpy()
+                        temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
             elif video_path_obj.is_dir():
@@ -47,29 +55,31 @@ class IOHandler:
                     if p.suffix in [".jpg", ".jpeg", ".JPG", ".JPEG"]
                 ]
                 for frame in frames:
-                    # TODO implement copy frame to temp_dir
+                    shutil.copy(frame, temp_dir / f"{frame_count:05d}.jpg")
                     frame_count += 1
+            else:
+                raise ValueError(
+                    f"Unsupported video file format: {video_path_obj.suffix}. Please provide either a video file or a directory containing JPEG images."
+                )
 
             print(f"Extracted frames from {video_path}...")
 
-        raise NotImplementedError()
-        # return temp_dir
+        return temp_dir
 
     def extract_frames_from_file_list(self, manifest: str):
         raise NotImplementedError("Method not implemented yet.")
 
-    def clear_tmp(self) -> None:
+    def clear_tmp(self, temp_dir: Path) -> None:
         """Clear the temporary directory where frames are stored."""
-        tmp_dir = Path.cwd() / "tmp"
-        if tmp_dir.exists():
-            for item in tmp_dir.iterdir():
-                if item.is_file():
-                    item.unlink()
-                elif item.is_dir():
-                    item.rmdir()
-            print(f"Cleared temporary directory: {tmp_dir}")
+        if temp_dir.exists() and temp_dir.is_dir():
+            shutil.rmtree(temp_dir)
         else:
-            print(f"Temporary directory {tmp_dir} does not exist.")
+            print(
+                f"Temporary directory {temp_dir} does not exist or is not a directory."
+            )
+
+
+##### TODO refactor everything below #####
 
 
 def create_video_from_frames(input_dir, frame_format, output_file, framerate):
@@ -84,6 +94,7 @@ def create_video_from_frames(input_dir, frame_format, output_file, framerate):
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     # Ensure input directory exists
     input_path = Path(input_dir)
