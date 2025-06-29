@@ -5,12 +5,13 @@ Handles input/output operations such as extracting frames from video, creating v
 directory management, and CSV file output.
 """
 
-import subprocess
-from pathlib import Path
+import csv
 import shutil
+from pathlib import Path
+
 import decord
 import imageio
-import csv
+from jaxtyping import Int, Bool
 
 
 class IOHandler:
@@ -113,115 +114,119 @@ class IOHandler:
     def save_inference_state(self):
         raise NotImplementedError
 
+    # TODO change according to what's next for analysis.py
+    def create_graph(self, data: list[tuple[Int, Bool[torch.Tensor, "H W"]]]) -> None:
+        raise NotImplementedError
+
 
 ##### TODO refactor everything below #####
 
 
-def create_video_from_frames(input_dir, frame_format, output_file, framerate):
-    """
-    Create MP4 video from sequence of JPEG images using ffmpeg.
+# def create_video_from_frames(input_dir, frame_format, output_file, framerate):
+#     """
+#     Create MP4 video from sequence of JPEG images using ffmpeg.
 
-    Args:
-        input_dir (str): Directory containing input JPEG frames
-        frame_format (str): Format of the input frames (e.g., "%05d.jpg")
-        output_file (str): Path to the output video file
-        framerate (float): Frames per second for the output video
+#     Args:
+#         input_dir (str): Directory containing input JPEG frames
+#         frame_format (str): Format of the input frames (e.g., "%05d.jpg")
+#         output_file (str): Path to the output video file
+#         framerate (float): Frames per second for the output video
 
-    Returns:
-        bool: True if successful, False otherwise
+#     Returns:
+#         bool: True if successful, False otherwise
 
-    """
-    # Ensure input directory exists
-    input_path = Path(input_dir)
-    if not input_path.exists():
-        print(f"Error: Input directory '{input_dir}' not found.")
-        return False
+#     """
+#     # Ensure input directory exists
+#     input_path = Path(input_dir)
+#     if not input_path.exists():
+#         print(f"Error: Input directory '{input_dir}' not found.")
+#         return False
 
-    # Check if input images exist
-    frame_files = list(input_path.glob("*.jpg"))
-    if not frame_files:
-        print(f"Error: No JPEG files found in '{input_dir}'.")
-        return False
+#     # Check if input images exist
+#     frame_files = list(input_path.glob("*.jpg"))
+#     if not frame_files:
+#         print(f"Error: No JPEG files found in '{input_dir}'.")
+#         return False
 
-    # Construct input pattern for ffmpeg
-    input_pattern = input_path / frame_format
+#     # Construct input pattern for ffmpeg
+#     input_pattern = input_path / frame_format
 
-    # Construct ffmpeg command
-    cmd = [
-        "ffmpeg",
-        "-framerate",
-        str(framerate),
-        "-i",
-        str(input_pattern),
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-y",  # Overwrite output file if it exists
-        str(output_file),
-    ]
+#     # Construct ffmpeg command
+#     cmd = [
+#         "ffmpeg",
+#         "-framerate",
+#         str(framerate),
+#         "-i",
+#         str(input_pattern),
+#         "-c:v",
+#         "libx264",
+#         "-pix_fmt",
+#         "yuv420p",
+#         "-y",  # Overwrite output file if it exists
+#         str(output_file),
+#     ]
 
-    try:
-        print(f"Creating video from frames in '{input_dir}'...")
-        print(f"Command: {' '.join(cmd)}")
+#     try:
+#         print(f"Creating video from frames in '{input_dir}'...")
+#         print(f"Command: {' '.join(cmd)}")
 
-        # Run ffmpeg command
-        _ = subprocess.run(cmd, capture_output=True, text=True, check=True)
+#         # Run ffmpeg command
+#         _ = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-        print(f"Successfully created video: '{output_file}'")
-        print(f"Used {len(frame_files)} frames at {framerate} fps")
-        return True
+#         print(f"Successfully created video: '{output_file}'")
+#         print(f"Used {len(frame_files)} frames at {framerate} fps")
+#         return True
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error running ffmpeg: {e}")
-        print(f"stderr: {e.stderr}")
-        return False
-    except FileNotFoundError:
-        print(
-            "Error: ffmpeg not found. Please install ffmpeg and ensure it's in your PATH."
-        )
-        return False
-
-
-def make_dir(base_path: Path):
-    """
-    Create a directory at the given path, or a new one with an incremented suffix if it exists.
-
-    Args:
-        base_path (Path): The base directory path to create.
-
-    Returns:
-        Path: The created directory path.
-    """
-    if not base_path.exists():
-        base_path.mkdir(parents=True, exist_ok=True)
-        print(f"Created directory: {base_path}")
-        return base_path
-
-    parent = base_path.parent
-    stem = base_path.name
-    i = 1
-    while True:
-        new_path = parent / f"{stem}{i}"
-        if not new_path.exists():
-            new_path.mkdir(parents=True, exist_ok=True)
-            print(f"Created directory: {new_path}")
-            return new_path
-        i += 1
+#     except subprocess.CalledProcessError as e:
+#         print(f"Error running ffmpeg: {e}")
+#         print(f"stderr: {e.stderr}")
+#         return False
+#     except FileNotFoundError:
+#         print(
+#             "Error: ffmpeg not found. Please install ffmpeg and ensure it's in your PATH."
+#         )
+#         return False
 
 
-def create_csv(x, y, x_axis, y_axis, output_file):
-    """
-    Create a CSV file from the provided data.
+# def make_dir(base_path: Path):
+#     """
+#     Create a directory at the given path, or a new one with an incremented suffix if it exists.
 
-    Args:
-        x (list): X-axis data.
-        y (list): Y-axis data.
-        x_axis (str): Label for the x-axis.
-        y_axis (str): Label for the y-axis.
-        output_file (Path): Path to save the CSV file.
-    """
-    data = {x_axis: x, y_axis: y}
-    df = pd.DataFrame(data)
-    df.to_csv(output_file, index=False)
-    print(f"CSV file saved as: {output_file}")
+#     Args:
+#         base_path (Path): The base directory path to create.
+
+#     Returns:
+#         Path: The created directory path.
+#     """
+#     if not base_path.exists():
+#         base_path.mkdir(parents=True, exist_ok=True)
+#         print(f"Created directory: {base_path}")
+#         return base_path
+
+#     parent = base_path.parent
+#     stem = base_path.name
+#     i = 1
+#     while True:
+#         new_path = parent / f"{stem}{i}"
+#         if not new_path.exists():
+#             new_path.mkdir(parents=True, exist_ok=True)
+#             print(f"Created directory: {new_path}")
+#             return new_path
+#         i += 1
+
+
+# def create_csv(x, y, x_axis, y_axis, output_file):
+#     """
+#     Create a CSV file from the provided data.
+
+#     Args:
+#         x (list): X-axis data.
+#         y (list): Y-axis data.
+#         x_axis (str): Label for the x-axis.
+#         y_axis (str): Label for the y-axis.
+#         output_file (Path): Path to save the CSV file.
+#     """
+#     data = {x_axis: x, y_axis: y}
+#     df = pd.DataFrame(data)
+#     df.to_csv(output_file, index=False)
+#     print(f"CSV file saved as: {output_file}")

@@ -16,7 +16,6 @@ import torch
 from jaxtyping import Int, Float
 from sam2.build_sam import build_sam2_video_predictor
 from sam2.sam2_video_predictor import SAM2VideoPredictor
-from torch import Tensor
 
 
 class SAMModels(enum.Enum):
@@ -127,8 +126,8 @@ class SAMHandler:
         raise NotImplementedError
 
     def analyze_videos(
-        self, frame_direcetory: str, prompt: Float[Tensor, "n_embed"]
-    ) -> list[tuple[Int, Int, Float[Tensor, "H W"]]]:
+        self, frame_direcetory: str, prompt: Float[torch.Tensor, "n_embed"]
+    ) -> list[tuple[Int, Int, Float[torch.Tensor, "H W"]]]:
         raise NotImplementedError
 
 
