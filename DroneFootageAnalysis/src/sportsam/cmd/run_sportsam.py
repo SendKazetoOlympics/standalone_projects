@@ -36,15 +36,24 @@ def main():
         default="output",
         help="Directory to save output frames and results.",
     )
+    parser.add_argument(
+        "--save_inference_state",
+        action=argparse.BooleanOptionalAction,
+        help="Save the inference state after processing.",
+    )
 
     args = parser.parse_args()
 
-    io_handler = IOHandler()
-    # sam_handler = SAMHandler(model=args.model)
-    # analyzer = Analyzer()
-
     with tempfile.TemporaryDirectory() as temp_dir:
+        io_handler = IOHandler(temp_dir=temp_dir, output_dir=args.output_dir)
+
         if args.video_files:
-            io_handler.extract_frames_from_videos(args.video_files, Path(temp_dir))
+            io_handler.extract_frames_from_videos(args.video_files)
         elif args.manifest:
-            io_handler.extract_frames_from_manifest(args.manifest, Path(temp_dir))
+            io_handler.extract_frames_from_manifest(args.manifest)
+
+        # sam_handler = SAMHandler(model=args.model)
+        # analyzer = Analyzer()
+
+        if args.save_inference_state:
+            io_handler.save_inference_state()

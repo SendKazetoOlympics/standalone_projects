@@ -14,15 +14,38 @@ import csv
 
 
 class IOHandler:
+    temp_dir: Path
+    output_dir: Path
 
-    def __init__(self):
-        pass
+    def __init__(self, temp_dir: Path | str, output_dir: Path | str):
+        """Initialize IOHandler with temporary and output directories.
+        Args:
+            temp_dir (Path | str): Path to the temporary directory for storing extracted frames.
+            output_dir (Path | str): Path to the output directory where results will be saved.
 
-    def extract_frames_from_videos(self, videos: list[str], output_dir: Path) -> None:
+        """
+        if isinstance(temp_dir, str):
+            temp_dir = Path(temp_dir)
+        self.temp_dir = Path(temp_dir)
+
+        if isinstance(output_dir, str):
+            output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir)
+
+        if not self.temp_dir.exists():
+            raise FileNotFoundError(
+                f"Temporary directory {self.temp_dir} does not exist. Please create it before using IOHandler."
+            )
+
+        if not self.output_dir.exists():
+            raise FileNotFoundError(
+                f"Output directory {self.output_dir} does not exist. Please create it before using IOHandler."
+            )
+
+    def extract_frames_from_videos(self, videos: list[str]) -> None:
         """Extract frames from a list of video files or directories containing JPEG images.
         Args:
             video_paths (list[str]): List of paths to video files or directories containing JPEG images.
-            output_dir (Path): Path to the directory where extracted frames will be saved.
 
         """
         if len(videos) == 0:
@@ -40,7 +63,7 @@ class IOHandler:
                 vr = decord.VideoReader(video_path)
                 for frame in vr:
                     imageio.imwrite(
-                        output_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
+                        self.temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
             elif video_path.is_dir():
@@ -52,7 +75,7 @@ class IOHandler:
                     ]
                 )
                 for frame in frames:
-                    shutil.copy(frame, output_dir / f"{frame_count:05d}.jpg")
+                    shutil.copy(frame, self.temp_dir / f"{frame_count:05d}.jpg")
                     frame_count += 1
             else:
                 raise ValueError(
@@ -61,11 +84,10 @@ class IOHandler:
 
             print(f"Extracted frames from {video_path}...")
 
-    def extract_frames_from_manifest(self, manifest: str, output_dir: Path) -> None:
+    def extract_frames_from_manifest(self, manifest: str) -> None:
         """Extract frames from a list of video files specified in a manifest file.
         Args:
             manifest (Path): Path to the CSV manifest file containing video file paths.
-            output_dir (Path): Path to the directory where extracted frames will be saved.
 
         """
         manifest_path = Path(manifest)
@@ -86,7 +108,10 @@ class IOHandler:
             reader = csv.reader(f)
             videos = [row[0] for row in reader if row]
 
-        self.extract_frames_from_videos(videos, output_dir)
+        self.extract_frames_from_videos(videos)
+
+    def save_inference_state(self):
+        raise NotImplementedError
 
 
 ##### TODO refactor everything below #####

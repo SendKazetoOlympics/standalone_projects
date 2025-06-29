@@ -20,7 +20,8 @@ from torch import Tensor
 
 
 class SAMModels(enum.Enum):
-    TINY = "sam2.1_hiera_t,yaml", "sam2.1_hiera_tiny.pt"
+    # TODO yaml downloads don't work
+    TINY = "sam2.1_hiera_t.yaml", "sam2.1_hiera_tiny.pt"
     SMALL = "sam2.1_hiera_s.yaml", "sam2.1_hiera_small.pt"
     BASE_PLUS = "sam2.1_hiera_b+.yaml", "sam2.1_hiera_base_plus.pt"
     LARGE = "sam2.1_hiera_l.yaml", "sam2.1_hiera_large.pt"
@@ -32,17 +33,16 @@ class SAMHandler:
     inference_state: dict[str, Any]
     frames_path: Path
 
-    def __init__(
-        self, frames_path: Path | str, model: SAMModels | str = SAMModels.SMALL
-    ):
+    def __init__(self, frames_path: Path | str, model: SAMModels | str):
         """Initialize the SAMHandler with the specified frames directory and model.
 
         Args:
             frames_path (Path | str): Path to the directory containing extracted video frames.
-            model (SAMModels | str, optional): The SAM model variant to use. Can be a SAMModels enum or a string matching one of its values. Defaults to SAMModels.SMALL.
+            model (SAMModels | str ): The SAM model variant to use. Can be a SAMModels enum or a string matching one of its values.
 
         Raises:
             ValueError: If the provided model string does not correspond to a valid SAMModels enum member.
+
         """
         if isinstance(frames_path, str):
             frames_path = Path(frames_path)
@@ -100,6 +100,10 @@ class SAMHandler:
             config_path, checkpoint_path, device=device.type
         )
 
+        self.inference_state = self.predictor.init_state(
+            video_path=str(self.frames_path)
+        )
+
     # def request_prompt(self, prompt: str):
     def request_prompt(self, prompt: tuple[int, int]):
         """Request a prompt from the user.
@@ -108,6 +112,16 @@ class SAMHandler:
 
         Args:
             prompt: The prompt to display to the user.
+
+        """
+        raise NotImplementedError
+
+    # TODO prompt
+    def init_inference_state(self) -> dict[str, Any]:
+        """Initialize the inference state.
+
+        Returns:
+            dict[str, Any]: The initialized inference state.
 
         """
         raise NotImplementedError
