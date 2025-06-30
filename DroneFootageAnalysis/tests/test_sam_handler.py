@@ -1,5 +1,15 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
+from pathlib import Path
+
+import sys
+
+# Patch sys.modules to mock torch and other heavy dependencies
+sys.modules["torch"] = MagicMock()
+sys.modules["jaxtyping"] = MagicMock()
+sys.modules["sam2.build_sam"] = MagicMock()
+sys.modules["sam2.sam2_video_predictor"] = MagicMock()
+sys.modules["sam2.utils.misc"] = MagicMock()
 
 from sportsam.sam_handler import SAMHandler, SAMModels
 
@@ -16,6 +26,35 @@ from sportsam.sam_handler import SAMHandler, SAMModels
 def test_sammodels_enum_values(enum_member, expected_yaml, expected_pt):
     assert enum_member.value[0] == expected_yaml
     assert enum_member.value[1] == expected_pt
+
+
+def setup_handler(
+    tmp_path, model=SAMModels.SMALL, config_exists=True, checkpoint_exists=True
+):
+    # Helper to patch all dependencies for SAMHandler construction
+    patches = [
+        patch(
+            "sportsam.sam_handler.build_sam2_video_predictor", return_value=MagicMock()
+        ),
+        patch("sportsam.sam_handler.urllib.request.urlretrieve", return_value=None),
+        patch("sportsam.sam_handler.Path.mkdir", return_value=None),
+        patch("sportsam.sam_handler.torch.cuda.is_available", return_value=False),
+        patch(
+            "sportsam.sam_handler.torch.backends.mps.is_available", return_value=False
+        ),
+    ]
+    # Patch Path.exists for config and checkpoint
+    exists_side_effect = [config_exists, checkpoint_exists]
+    patches.append(
+        patch("sportsam.sam_handler.Path.exists", side_effect=exists_side_effect)
+    )
+    ctxs = [p for p in patches]
+    for ctx in ctxs:
+        ctx.start()
+    handler = SAMHandler(frames_path=tmp_path, model=model)
+    for ctx in ctxs:
+        ctx.stop()
+    return handler
 
 
 def test_samhandler_accepts_enum_and_str(tmp_path):
@@ -96,13 +135,11 @@ def test_samhandler_device_selection(tmp_path, cuda, mps, expected_device_type):
         device_mock = MagicMock()
         device_mock.type = expected_device_type
         device_patch.return_value = device_mock
-        # Patch get_device_properties to return a mock with .major attribute
         dev_prop_mock = MagicMock()
         dev_prop_mock.major = 8
         get_dev_prop_patch.return_value = dev_prop_mock
 
         handler = SAMHandler(frames_path=tmp_path, model=SAMModels.SMALL)
-        # The device type used in build_sam2_video_predictor should match expected
         build_mock.assert_called()
         args, kwargs = build_mock.call_args
         assert kwargs.get("device") == expected_device_type
@@ -117,9 +154,7 @@ def test_samhandler_downloads_if_missing(tmp_path):
     ) as urlretrieve_mock, patch(
         "sportsam.sam_handler.Path.mkdir", return_value=None
     ), patch(
-        # config_path.exists() -> False, checkpoint_path.exists() -> False
-        "sportsam.sam_handler.Path.exists",
-        side_effect=[False, False],
+        "sportsam.sam_handler.Path.exists", side_effect=[False, False]
     ), patch(
         "sportsam.sam_handler.torch.cuda.is_available", return_value=False
     ), patch(
@@ -130,24 +165,32 @@ def test_samhandler_downloads_if_missing(tmp_path):
         assert urlretrieve_mock.call_count == 2
 
 
-def test_request_prompt_and_not_implemented(tmp_path):
+def test_analyze_videos_runs(tmp_path):
+    # Setup batch directories and mock predictor
+    batch0 = tmp_path / "batch0"
+    batch0.mkdir(exist_ok=True)
     with patch(
-        "sportsam.sam_handler.build_sam2_video_predictor", return_value=MagicMock()
-    ), patch(
-        "sportsam.sam_handler.urllib.request.urlretrieve", return_value=None
-    ), patch(
-        "sportsam.sam_handler.Path.mkdir", return_value=None
+        "sportsam.sam_handler.build_sam2_video_predictor"
+    ) as mock_builder, patch("sportsam.sam_handler.urllib.request.urlretrieve"), patch(
+        "sportsam.sam_handler.Path.mkdir"
     ), patch(
         "sportsam.sam_handler.Path.exists", return_value=True
     ), patch(
         "sportsam.sam_handler.torch.cuda.is_available", return_value=False
     ), patch(
         "sportsam.sam_handler.torch.backends.mps.is_available", return_value=False
-    ):
+    ), patch(
+        "sportsam.sam_handler.load_video_frames"
+    ) as mock_load_frames:
+        mock_predictor = MagicMock()
+        mock_predictor.image_size = (224, 224)
+        mock_predictor.device = "cpu"
+        mock_predictor.init_state.return_value = {"images": [], "num_frames": 0}
+        mock_predictor.propagate_in_video.return_value = [(0, [1], "mask_tensor")]
+        mock_builder.return_value = mock_predictor
+        mock_load_frames.return_value = (["img1", "img2"], None, None)
+
         handler = SAMHandler(frames_path=tmp_path, model=SAMModels.SMALL)
-        with pytest.raises(NotImplementedError):
-            handler.request_prompt((10, 20))
-        with pytest.raises(NotImplementedError):
-            handler.init_inference_state()
-        with pytest.raises(NotImplementedError):
-            handler.analyze_videos("some_dir", MagicMock())
+        results = handler.analyze_videos(tmp_path)
+        assert isinstance(results, list)
+        assert results[0][2] == "mask_tensor"
