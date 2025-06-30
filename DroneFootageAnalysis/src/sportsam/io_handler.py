@@ -44,6 +44,7 @@ class IOHandler:
                 f"Output directory {self.output_dir} does not exist. Please create it before using IOHandler."
             )
 
+    # TODO different sized frames? Probably raise error if not all the same width/height
     def extract_frames_from_videos(self, videos: list[str]) -> None:
         """Extract frames from a list of video files or directories containing JPEG images.
         Args:
@@ -54,6 +55,16 @@ class IOHandler:
             raise ValueError("No video paths provided for frame extraction.")
 
         frame_count = 0
+        batch_size = 250
+        batch_num = 0
+        batch_frame_count = 0
+
+        def get_batch_dir(batch_num):
+            batch_dir = self.temp_dir / f"batch{batch_num}"
+            batch_dir.mkdir(parents=True, exist_ok=True)
+            return batch_dir
+
+        batch_dir = get_batch_dir(batch_num)
 
         for video in videos:
             video_path = Path(video)
@@ -64,10 +75,15 @@ class IOHandler:
             if video_path.suffix.lower() in {".mp4", ".avi", ".mov"}:
                 vr = decord.VideoReader(video_path)
                 for frame in vr:
+                    if batch_frame_count >= batch_size:
+                        batch_num += 1
+                        batch_frame_count = 0
+                        batch_dir = get_batch_dir(batch_num)
                     imageio.imwrite(
-                        self.temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
+                        batch_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
+                    batch_frame_count += 1
             elif video_path.is_dir():
                 frames = sorted(
                     [
@@ -77,8 +93,13 @@ class IOHandler:
                     ]
                 )
                 for frame in frames:
-                    shutil.copy(frame, self.temp_dir / f"{frame_count:05d}.jpg")
+                    if batch_frame_count >= batch_size:
+                        batch_num += 1
+                        batch_frame_count = 0
+                        batch_dir = get_batch_dir(batch_num)
+                    shutil.copy(frame, batch_dir / f"{frame_count:05d}.jpg")
                     frame_count += 1
+                    batch_frame_count += 1
             else:
                 raise ValueError(
                     f"Unsupported video file format: {video_path.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
