@@ -136,6 +136,9 @@ class IOHandler:
     def save_inference_state(self):
         raise NotImplementedError
 
+    def load_inference_state(self):
+        raise NotImplementedError
+
     # TODO change according to what's next for analysis.py
     def create_graph(self, data: list[tuple[Int, Bool[torch.Tensor, "H W"]]]) -> None:
         raise NotImplementedError

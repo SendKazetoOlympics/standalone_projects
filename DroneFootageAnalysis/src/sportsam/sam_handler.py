@@ -13,10 +13,10 @@ import torch
 from jaxtyping import Int, Float
 from sam2.build_sam import build_sam2_video_predictor
 from sam2.sam2_video_predictor import SAM2VideoPredictor
+from sam2.utils.misc import load_video_frames
 
 
 class SAMModels(enum.Enum):
-    # TODO yaml downloads don't work
     TINY = "sam2.1_hiera_t.yaml", "sam2.1_hiera_tiny.pt"
     SMALL = "sam2.1_hiera_s.yaml", "sam2.1_hiera_small.pt"
     BASE_PLUS = "sam2.1_hiera_b+.yaml", "sam2.1_hiera_base_plus.pt"
@@ -29,6 +29,7 @@ class SAMHandler:
     inference_state: dict[str, Any]
     frames_path: Path
 
+    # TODO add support for loading inference state
     def __init__(self, frames_path: Path | str, model: SAMModels | str):
         """Initialize the SAMHandler with the specified frames directory and model.
 
@@ -38,7 +39,6 @@ class SAMHandler:
 
         Raises:
             ValueError: If the provided model string does not correspond to a valid SAMModels enum member.
-
         """
         if isinstance(frames_path, str):
             frames_path = Path(frames_path)
@@ -110,35 +110,50 @@ class SAMHandler:
         )
 
         self.inference_state = self.predictor.init_state(
-            video_path=str(self.frames_path)
+            video_path=str(self.frames_path / "batch0")
         )
 
-    # def request_prompt(self, prompt: str):
-    def request_prompt(self, prompt: tuple[int, int]):
-        """Request a prompt from the user.
-        TODO: Ideally a vector
-        For now, click points.
+    def analyze_videos(
+        self, frames_dir: Path
+    ) -> list[tuple[Int, Int, Float[torch.Tensor, "H W"]]]:
+        """Analyze all batches of frames in a directory.
 
         Args:
-            prompt: The prompt to display to the user.
-
-        """
-        raise NotImplementedError
-
-    # TODO prompt
-    def init_inference_state(self) -> dict[str, Any]:
-        """Initialize the inference state.
+            frames_dir: Directory containing batch subdirectories of video frames.
 
         Returns:
-            dict[str, Any]: The initialized inference state.
-
+            List of tuples (frame_idx, obj_ids, mask_tensor)
         """
-        raise NotImplementedError
+        results = []
 
-    def analyze_videos(
-        self, frame_direcetory: str, prompt: Float[torch.Tensor, "n_embed"]
-    ) -> list[tuple[Int, Int, Float[torch.Tensor, "H W"]]]:
-        raise NotImplementedError
+        # Find all batch directories (batch0, batch1, ...)
+        batch_dirs = sorted(
+            [
+                d
+                for d in frames_dir.iterdir()
+                if d.is_dir() and d.name.startswith("batch")
+            ],
+            key=lambda d: int(d.name.replace("batch", "")),
+        )
+
+        for batch_dir in batch_dirs:
+            images, _, _ = load_video_frames(
+                video_path=batch_dir,
+                image_size=self.predictor.image_size,
+                offload_video_to_cpu=False,
+                compute_device=self.predictor.device,
+            )
+            self.inference_state["images"] = images
+            self.inference_state["num_frames"] = len(images)
+
+            for frame_idx, obj_ids, masks in self.predictor.propagate_in_video(
+                self.inference_state, start_frame_idx=0
+            ):
+                results.append((frame_idx, obj_ids, masks))
+
+        # TOOD save final inference state?
+
+        return results
 
 
 ##### TODO refactor everything below #####

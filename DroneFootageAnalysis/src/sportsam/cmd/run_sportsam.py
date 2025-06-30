@@ -1,6 +1,7 @@
 import argparse
 import tempfile
 from pathlib import Path
+import torch
 
 from sportsam.io_handler import IOHandler
 from sportsam.sam_handler import SAMHandler
@@ -52,8 +53,7 @@ def main():
         elif args.manifest:
             io_handler.extract_frames_from_manifest(args.manifest)
 
+        # TODO Run SAM2
         # sam_handler = SAMHandler(model=args.model)
         # analyzer = Analyzer()
-
-        if args.save_inference_state:
-            io_handler.save_inference_state()
+        # sam_handler.analyze_videos(temp_dir)
