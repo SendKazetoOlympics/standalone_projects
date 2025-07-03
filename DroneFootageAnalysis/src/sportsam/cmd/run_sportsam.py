@@ -1,7 +1,7 @@
 import argparse
 import tempfile
-from pathlib import Path
-import torch
+
+import hydra
 
 from sportsam.io_handler import IOHandler
 from sportsam.sam_handler import SAMHandler
@@ -28,9 +28,7 @@ def main():
         help="Path to the manifest file containing list of videos.",
         dest="manifest",
     )
-    parser.add_argument(
-        "--model", type=str, default="sam2.1_hiera_small", help="SAM model to use."
-    )
+    parser.add_argument("--model", type=str, default="small", help="SAM model to use.")
     parser.add_argument(
         "--output_dir",
         type=str,
@@ -42,9 +40,19 @@ def main():
         action=argparse.BooleanOptionalAction,
         help="Save the inference state after processing.",
     )
+    # TODO custom checkpoint path?
+    # parser.add_argument(
+    #     "--checkpoint-path",
+    #     type=str,
+    # Does this work?
+    #     default=~/.config/sportsam/checkpoints,
+    #     help="Path to the directory where your checkpoints are stored.",
+    # )
+    # TODO click vs input inference state
 
     args = parser.parse_args()
 
+    # TODO rename temp_dir (in io_handler) as frames_dir so we can make frame directory permanent?
     with tempfile.TemporaryDirectory() as temp_dir:
         io_handler = IOHandler(temp_dir=temp_dir, output_dir=args.output_dir)
 
@@ -54,6 +62,9 @@ def main():
             io_handler.extract_frames_from_manifest(args.manifest)
 
         # TODO Run SAM2
-        # sam_handler = SAMHandler(model=args.model)
+        sam_handler = SAMHandler(frames_path=temp_dir, model=args.model)
+        sam_handler.request_click()
+        results = sam_handler.analyze_videos(io_handler.temp_dir)
+        io_handler.save_output_masks(results)
         # analyzer = Analyzer()
         # sam_handler.analyze_videos(temp_dir)

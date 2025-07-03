@@ -39,10 +39,7 @@ class IOHandler:
                 f"Temporary directory {self.temp_dir} does not exist. Please create it before using IOHandler."
             )
 
-        if not self.output_dir.exists():
-            raise FileNotFoundError(
-                f"Output directory {self.output_dir} does not exist. Please create it before using IOHandler."
-            )
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     # TODO different sized frames? Probably raise error if not all the same width/height
     def extract_frames_from_videos(self, videos: list[str]) -> None:
@@ -73,7 +70,7 @@ class IOHandler:
                 raise FileNotFoundError(f"Video file {video_path} not found.")
 
             if video_path.suffix.lower() in {".mp4", ".avi", ".mov"}:
-                vr = decord.VideoReader(video_path)
+                vr = decord.VideoReader(str(video_path))
                 for frame in vr:
                     if batch_frame_count >= batch_size:
                         batch_num += 1
@@ -132,6 +129,16 @@ class IOHandler:
             videos = [row[0] for row in reader if row]
 
         self.extract_frames_from_videos(videos)
+
+    def save_output_masks(
+        self, results: dict[Int, tuple[Int, Bool[torch.Tensor, "H W"]]]
+    ) -> None:
+        for frame_idx, masks_dict in results.items():
+            for obj_id, mask in masks_dict:
+                torch.save(
+                    torch.tensor(mask, dtype=torch.uint8),
+                    self.output_dir / f"masks/{frame_idx:05d}_{obj_id}_mask.pt",
+                )
 
     def save_inference_state(self):
         raise NotImplementedError

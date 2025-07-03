@@ -4,13 +4,16 @@ sam_handler.py
 Handles interaction with the SAM model, including mask visualization, user input, and main segmentation logic.
 """
 
+import cv2
+import numpy as np
+
 import enum
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 import torch
-from jaxtyping import Int, Float
+from jaxtyping import Bool, Int
 from sam2.build_sam import build_sam2_video_predictor
 from sam2.sam2_video_predictor import SAM2VideoPredictor
 from sam2.utils.misc import load_video_frames
@@ -45,39 +48,25 @@ class SAMHandler:
         self.frames_path = frames_path
         # Accept both enum names (e.g. "SMALL") and values (e.g. "sam2.1_hiera_s.yaml")
         if isinstance(model, str):
+            model = model.upper()
             try:
                 model = SAMModels[model]
             except KeyError:
                 try:
-                    model = SAMModels(model)
+                    model = SAMModels(model.upper())
                 except ValueError:
-                    raise ValueError(
-                        f"{model!r} is not a valid SAMModels name or value"
-                    )
+                    raise ValueError(f"{model} is not a valid SAMModels name or value")
         self.model = model
         print(f"Using model: {model}")
 
-        # Use system default config folder
-        config_base = Path.home() / ".config" / "sportsam"
-        config_base.mkdir(parents=True, exist_ok=True)
-        config_path = config_base / self.model.value[0]
-        checkpoint_path = config_base / self.model.value[1]
+        checkpoint_base = Path.home() / ".config/sportsam/checkpoints"
+        checkpoint_base.mkdir(parents=True, exist_ok=True)
+        checkpoint_path = checkpoint_base / self.model.value[1]
 
-        # Updated base URLs
-        config_base_url = "https://raw.githubusercontent.com/facebookresearch/sam2/main/sam2/configs/sam2.1/"
         checkpoint_base_url = (
             "https://dl.fbaipublicfiles.com/segment_anything_2/092824/"
         )
-
-        config_url = f"{config_base_url}{self.model.value[0]}"
         checkpoint_url = f"{checkpoint_base_url}{self.model.value[1]}"
-
-        if not config_path.exists():
-            print(f"Downloading {self.model} model config to {config_path}...")
-            urllib.request.urlretrieve(config_url, config_path)
-            print("Download complete.")
-        else:
-            print(f"{self.model} model config found.")
 
         if not checkpoint_path.exists():
             print(f"Downloading {self.model} model checkpoint to {checkpoint_path}...")
@@ -105,26 +94,84 @@ class SAMHandler:
             )
         print(f"Using device: {device}")
 
+        # SAM2 uses Hydra which gets really messy when trying to build a wrapper around something built with it. So instead, we're just gonna pass in the SAM2 package configs into Hydra and just manage the checkpoints.
         self.predictor = build_sam2_video_predictor(
-            config_path, checkpoint_path, device=device.type
+            config_file=f"configs/sam2.1/{self.model.value[0]}",
+            ckpt_path=checkpoint_path,
+            device=device.type,
         )
 
+        # TODO loads batch0 twice, need to do something about that
         self.inference_state = self.predictor.init_state(
             video_path=str(self.frames_path / "batch0")
         )
 
+    # def request_prompt(self):
+    #     pass
+
+    def request_click(self, frame_idx: Int = 0, obj_id: Int = 1) -> None:
+        """Prompts the user to click on an image using OpenCV2 and adds the click as a prompt using add_new_points_or_box.
+
+        Args:
+            frame_idx: Index of the frame in the video.
+            obj_id: Object ID to associate with the click.
+        """
+        click_coords = []
+
+        def mouse_callback(event, x, y, flags, param):
+            if event == cv2.EVENT_LBUTTONDOWN:
+                click_coords.append((x, y))
+                print(f"Click at: ({x}, {y})")
+
+        frame_path = self.frames_path / f"batch0/{frame_idx:05d}.jpg"
+        if not frame_path.exists():
+            raise FileNotFoundError(f"Image at {str(frame_path)} does not exist")
+        img = cv2.imread(str(frame_path))
+        if img is None:
+            raise ValueError(f"Could not read image at {str(frame_path)}")
+
+        cv2.namedWindow("Click on the object")
+        cv2.setMouseCallback("Click on the object", mouse_callback)
+
+        while True:
+            cv2.imshow("Click on the object", img)
+            if cv2.waitKey(20) & 0xFF == 27:  # ESC to quit
+                break
+            if click_coords:
+                break
+
+        cv2.destroyAllWindows()
+
+        if not click_coords:
+            raise RuntimeError("No click was registered.")
+
+        # TODO support for negative clicks? Feedback loop for showing clicks and mask
+        # Prepare points and labels for add_new_points_or_box
+        points = np.array([click_coords], dtype=np.float32)
+        labels = np.array([1] * len(click_coords), np.int32)
+
+        self.predictor.add_new_points_or_box(
+            inference_state=self.inference_state,
+            frame_idx=frame_idx,
+            obj_id=obj_id,
+            points=points,
+            labels=labels,
+        )
+
+        print("Click(s) added...")
+
     def analyze_videos(
         self, frames_dir: Path
-    ) -> list[tuple[Int, Int, Float[torch.Tensor, "H W"]]]:
+    ) -> dict[Int, tuple[Int, Bool[torch.Tensor, "H W"]]]:
         """Analyze all batches of frames in a directory.
 
         Args:
             frames_dir: Directory containing batch subdirectories of video frames.
 
         Returns:
-            List of tuples (frame_idx, obj_ids, mask_tensor)
+            Dict of tuples frame_idx: (obj_ids, mask_tensor)
         """
-        results = []
+        results = {}
 
         # Find all batch directories (batch0, batch1, ...)
         batch_dirs = sorted(
@@ -138,18 +185,27 @@ class SAMHandler:
 
         for batch_dir in batch_dirs:
             images, _, _ = load_video_frames(
-                video_path=batch_dir,
+                video_path=str(batch_dir),
                 image_size=self.predictor.image_size,
                 offload_video_to_cpu=False,
                 compute_device=self.predictor.device,
             )
+            # TODO change inference state without messing everything up?
             self.inference_state["images"] = images
             self.inference_state["num_frames"] = len(images)
+            # self.inference_state["frames_tracked_per_obj"].clear()
 
-            for frame_idx, obj_ids, masks in self.predictor.propagate_in_video(
+            for (
+                out_frame_idx,
+                out_obj_ids,
+                out_mask_logits,
+            ) in self.predictor.propagate_in_video(
                 self.inference_state, start_frame_idx=0
             ):
-                results.append((frame_idx, obj_ids, masks))
+                results[out_frame_idx] = {
+                    out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
+                    for i, out_obj_id in enumerate(out_obj_ids)
+                }
 
         # TOOD save final inference state?
 

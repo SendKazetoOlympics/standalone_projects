@@ -1,5 +1,5 @@
 [project]
-name = "samsport"
+name = "sportsam"
 version = "0.1.0"
 description = "Use AI to analyze sports footage"
 readme = "README.md"
