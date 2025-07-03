@@ -1,3 +1,9 @@
+## 0.3.0 (2025-07-02)
+
+### Feat
+
+- added check point path flag to cli
+
 ## 0.2.1 (2025-07-02)
 
 IGNORE EVERYTHING HERE AND BELOW
