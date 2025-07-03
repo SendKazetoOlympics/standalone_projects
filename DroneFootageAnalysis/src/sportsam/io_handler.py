@@ -18,6 +18,7 @@ from jaxtyping import Int, Bool
 class IOHandler:
     temp_dir: Path
     output_dir: Path
+    video_frame_counts: Int
 
     def __init__(self, temp_dir: Path | str, output_dir: Path | str):
         """Initialize IOHandler with temporary and output directories.
@@ -41,6 +42,7 @@ class IOHandler:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         (self.output_dir / "masks").mkdir(parents=True, exist_ok=True)
+        self.video_frame_counts = []
 
     # TODO different sized frames? Probably raise error if not all the same width/height
     def extract_frames_from_videos(self, videos: list[str]) -> None:
@@ -103,6 +105,7 @@ class IOHandler:
                     f"Unsupported video file format: {video_path.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
                 )
 
+            self.video_frame_counts.append(frame_count - self.video_frame_counts.sum())
             print(f"Extracted frames from {video_path}...")
 
     def extract_frames_from_manifest(self, manifest: str) -> None:
@@ -148,8 +151,8 @@ class IOHandler:
         raise NotImplementedError
 
     # TODO change according to what's next for analysis.py
-    def create_graph(self, data: list[tuple[Int, Bool[torch.Tensor, "H W"]]]) -> None:
-        raise NotImplementedError
+    # def create_graph(self, data: dict[Int ,dict[Int, Bool[torch.Tensor, "H W"]]]) -> None:
+    #     raise NotImplementedError
 
     # TODO split back into original videos
 
