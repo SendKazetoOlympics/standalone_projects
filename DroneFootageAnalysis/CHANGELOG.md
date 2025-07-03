@@ -1,4 +1,6 @@
-## 0.2.0 (2025-07-02)
+IGNORE EVERYTHING BELOW THIS
+
+## 0.2.1 (2025-07-02)
 
 ### Fix
 
@@ -22,6 +24,7 @@
 ### Fix
 
 - fixed configs, type for results, added prompt for click
+- use dicts instead of lists for results
 
 ### Refactor
 
