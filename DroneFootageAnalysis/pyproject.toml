@@ -1,6 +1,6 @@
 [project]
 name = "sportsam"
-version = "0.1.0"
+version = "0.2.0"
 description = "Use AI to analyze sports footage"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,3 +25,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sportsam"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "$version"
+version_scheme = "pep440"
+version_provider = "uv"
+update_changelog_on_bump = true
+major_version_zero = true
