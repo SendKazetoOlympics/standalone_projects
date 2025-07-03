@@ -6,6 +6,7 @@ class Analyzer:
     data: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]
     # data: list of frames, each frame is a tuple of (frame_index, object_index, mask tensor)
     # TODO turn data in __init__ into list, i.e. remove frame_index?
+    # TODO analyze each split video independently?
 
     def __init__(self, data: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]):
         # TODO initialization to torch tensor

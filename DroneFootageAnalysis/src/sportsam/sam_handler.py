@@ -172,13 +172,14 @@ class SAMHandler:
             Dict of frame_idx: (dict of obj_ids: mask_tensor)
         """
         results = {}
+        frame_idx = 0
 
         # Find all batch directories (batch0, batch1, ...)
         batch_dirs = sorted(
             [
-                d
-                for d in frames_dir.iterdir()
-                if d.is_dir() and d.name.startswith("batch")
+                dir
+                for dir in frames_dir.iterdir()
+                if dir.is_dir() and dir.name.startswith("batch")
             ],
             key=lambda d: int(d.name.replace("batch", "")),
         )
@@ -196,16 +197,17 @@ class SAMHandler:
             # self.inference_state["frames_tracked_per_obj"].clear()
 
             for (
-                out_frame_idx,
+                _,
                 out_obj_ids,
                 out_mask_logits,
             ) in self.predictor.propagate_in_video(
                 self.inference_state, start_frame_idx=0
             ):
-                results[out_frame_idx] = {
+                results[frame_idx] = {
                     out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
                     for i, out_obj_id in enumerate(out_obj_ids)
                 }
+                frame_idx += 1
 
         # TOOD save final inference state?
 

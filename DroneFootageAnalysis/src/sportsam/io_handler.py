@@ -40,6 +40,7 @@ class IOHandler:
             )
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        (self.output_dir / "masks").mkdir(parents=True, exist_ok=True)
 
     # TODO different sized frames? Probably raise error if not all the same width/height
     def extract_frames_from_videos(self, videos: list[str]) -> None:
@@ -149,6 +150,8 @@ class IOHandler:
     # TODO change according to what's next for analysis.py
     def create_graph(self, data: list[tuple[Int, Bool[torch.Tensor, "H W"]]]) -> None:
         raise NotImplementedError
+
+    # TODO split back into original videos
 
 
 ##### TODO refactor everything below #####
