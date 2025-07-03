@@ -3,11 +3,11 @@ from jaxtyping import Int, Bool
 
 
 class Analyzer:
-    data: dict[Int, tuple[Int, Bool[torch.Tensor, "H W"]]]
+    data: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]
     # data: list of frames, each frame is a tuple of (frame_index, object_index, mask tensor)
     # TODO turn data in __init__ into list, i.e. remove frame_index?
 
-    def __init__(self, data: dict[Int, tuple[Int, Bool[torch.Tensor, "H W"]]]):
+    def __init__(self, data: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]):
         # TODO initialization to torch tensor
         self.data = data
 

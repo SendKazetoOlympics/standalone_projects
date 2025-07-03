@@ -131,10 +131,10 @@ class IOHandler:
         self.extract_frames_from_videos(videos)
 
     def save_output_masks(
-        self, results: dict[Int, tuple[Int, Bool[torch.Tensor, "H W"]]]
+        self, results: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]
     ) -> None:
         for frame_idx, masks_dict in results.items():
-            for obj_id, mask in masks_dict:
+            for obj_id, mask in masks_dict.items():
                 torch.save(
                     torch.tensor(mask, dtype=torch.uint8),
                     self.output_dir / f"masks/{frame_idx:05d}_{obj_id}_mask.pt",

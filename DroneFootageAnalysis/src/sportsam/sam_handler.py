@@ -162,14 +162,14 @@ class SAMHandler:
 
     def analyze_videos(
         self, frames_dir: Path
-    ) -> dict[Int, tuple[Int, Bool[torch.Tensor, "H W"]]]:
+    ) -> dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]:
         """Analyze all batches of frames in a directory.
 
         Args:
             frames_dir: Directory containing batch subdirectories of video frames.
 
         Returns:
-            Dict of tuples frame_idx: (obj_ids, mask_tensor)
+            Dict of frame_idx: (dict of obj_ids: mask_tensor)
         """
         results = {}
 
