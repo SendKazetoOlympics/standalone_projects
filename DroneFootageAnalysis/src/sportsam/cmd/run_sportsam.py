@@ -65,5 +65,6 @@ def main():
         sam_handler.request_click()
         results = sam_handler.analyze_videos(io_handler.temp_dir)
         io_handler.save_output_masks(results)
+
         # analyzer = Analyzer()
         # sam_handler.analyze_videos(temp_dir)
