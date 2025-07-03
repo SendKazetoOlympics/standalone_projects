@@ -61,7 +61,6 @@ def main():
         elif args.manifest:
             io_handler.extract_frames_from_manifest(args.manifest)
 
-        # TODO Run SAM2
         sam_handler = SAMHandler(frames_path=temp_dir, model=args.model)
         sam_handler.request_click()
         results = sam_handler.analyze_videos(io_handler.temp_dir)
