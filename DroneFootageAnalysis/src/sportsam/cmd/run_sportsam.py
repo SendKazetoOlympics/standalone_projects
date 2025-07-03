@@ -41,13 +41,13 @@ def main():
         help="Save the inference state after processing.",
     )
     # TODO custom checkpoint path?
-    # parser.add_argument(
-    #     "--checkpoint-path",
-    #     type=str,
-    # Does this work?
-    #     default=~/.config/sportsam/checkpoints,
-    #     help="Path to the directory where your checkpoints are stored.",
-    # )
+    parser.add_argument(
+        "--checkpoint-path",
+        type=str,
+        #    Does this work?
+        # default=~/.config/sportsam/checkpoints,
+        help="Path to the directory where your checkpoints are stored.",
+    )
     # TODO click vs input inference state
 
     args = parser.parse_args()
