@@ -1,8 +1,6 @@
 import argparse
 import tempfile
 
-import hydra
-
 from sportsam.io_handler import IOHandler
 from sportsam.sam_handler import SAMHandler
 from sportsam.analysis import Analyzer
@@ -70,8 +68,8 @@ def main():
 
         # TODO have analyzer do analyzer.analyze_results and store that in a self.dict?
         zeroth_moments = analyzer.zeroth_image_moment()
-        first_moments = analyzer.first_image_moment()
         # TODO put path onto videos
+        first_moments = analyzer.first_image_moment()
         second_moments = analyzer.second_image_moment()
 
         io_handler.unbatch_frames()
