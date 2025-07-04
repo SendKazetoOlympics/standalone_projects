@@ -48,24 +48,16 @@ class IOHandler:
     def extract_frames_from_videos(self, videos: list[str]) -> None:
         """Extract frames from a list of video files or directories containing JPEG images.
         Args:
-            video_paths (list[str]): List of paths to video files or directories containing JPEG images.
+            videos (list[str]): List of paths to video files or directories containing JPEG images.
 
+        Raises:
+            ValueError: If no video paths are provided or if video format is unsupported.
+            FileNotFoundError: If video file is not found.
         """
         if len(videos) == 0:
             raise ValueError("No video paths provided for frame extraction.")
 
         frame_count = 0
-        batch_size = 250
-        batch_num = 0
-        batch_frame_count = 0
-
-        def get_batch_dir(batch_num):
-            batch_dir = self.temp_dir / f"batch{batch_num}"
-            batch_dir.mkdir(parents=True, exist_ok=True)
-            return batch_dir
-
-        batch_dir = get_batch_dir(batch_num)
-
         for video in videos:
             video_path = Path(video)
 
@@ -75,38 +67,81 @@ class IOHandler:
             if video_path.suffix.lower() in {".mp4", ".avi", ".mov"}:
                 vr = decord.VideoReader(str(video_path))
                 for frame in vr:
-                    if batch_frame_count >= batch_size:
-                        batch_num += 1
-                        batch_frame_count = 0
-                        batch_dir = get_batch_dir(batch_num)
                     imageio.imwrite(
-                        batch_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
+                        self.temp_dir / f"{frame_count:05d}.jpg", frame.asnumpy()
                     )
                     frame_count += 1
-                    batch_frame_count += 1
             elif video_path.is_dir():
                 frames = sorted(
                     [
                         p
                         for p in video_path.iterdir()
-                        if p.suffix in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+                        if p.suffix.lower() in {".jpg", ".jpeg"}
                     ]
                 )
                 for frame in frames:
-                    if batch_frame_count >= batch_size:
-                        batch_num += 1
-                        batch_frame_count = 0
-                        batch_dir = get_batch_dir(batch_num)
-                    shutil.copy(frame, batch_dir / f"{frame_count:05d}.jpg")
+                    shutil.copy(frame, self.temp_dir / f"{frame_count:05d}.jpg")
                     frame_count += 1
-                    batch_frame_count += 1
             else:
                 raise ValueError(
                     f"Unsupported video file format: {video_path.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
                 )
 
-            self.video_frame_counts.append(frame_count - self.video_frame_counts.sum())
+            self.video_frame_counts.append(frame_count - sum(self.video_frame_counts))
+            self.batch_frames()
             print(f"Extracted frames from {video_path}...")
+
+    def batch_frames(self, batch_size: int = 250) -> None:
+        """Organize extracted frames into batches.
+        Args:
+            batch_size (int, optional): Number of frames per batch. Defaults to 250.
+        """
+        frame_files = sorted(list(self.temp_dir.glob("*.jpg")))
+        if not frame_files:
+            print("No frames found to batch.")
+            return
+
+        batch_num = 0
+        for i in range(0, len(frame_files), batch_size):
+            batch_dir = self.temp_dir / f"batch{batch_num}"
+            batch_dir.mkdir(parents=True, exist_ok=True)
+
+            batch_files = frame_files[i : i + batch_size]
+            for frame_file in batch_files:
+                shutil.move(frame_file, batch_dir / frame_file.name)
+
+            batch_num += 1
+
+    def unbatch_frames(self) -> None:
+        """Move all frames from batch directories back to the temporary directory root.
+        This is the reverse operation of batch_frames().
+
+        Returns:
+            None
+        """
+        # Find all batch directories
+        batch_dirs = sorted(
+            [
+                d
+                for d in self.temp_dir.iterdir()
+                if d.is_dir() and d.name.startswith("batch")
+            ]
+        )
+
+        if not batch_dirs:
+            print("No batch directories found to unbatch.")
+            return
+
+        # Move all frames back to temp_dir
+        for batch_dir in batch_dirs:
+            frames = sorted(list(batch_dir.glob("*.jpg")))
+            for frame in frames:
+                shutil.move(frame, self.temp_dir / frame.name)
+
+            # Remove empty batch directory
+            batch_dir.rmdir()
+
+        print(f"Successfully unbatched frames from {len(batch_dirs)} directories.")
 
     def extract_frames_from_manifest(self, manifest: str) -> None:
         """Extract frames from a list of video files specified in a manifest file.
