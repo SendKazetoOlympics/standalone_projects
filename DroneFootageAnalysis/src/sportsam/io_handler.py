@@ -179,6 +179,9 @@ class IOHandler:
                     self.output_dir / f"masks/{frame_idx:05d}_{obj_id}_mask.pt",
                 )
 
+    def recreate_videos_from_frames(self) -> None:
+        raise NotImplementedError
+
     def save_inference_state(self):
         raise NotImplementedError
 

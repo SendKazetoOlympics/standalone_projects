@@ -160,7 +160,7 @@ class SAMHandler:
 
         print("Click(s) added...")
 
-    def analyze_videos(
+    def segment_videos(
         self, frames_dir: Path
     ) -> dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]:
         """Analyze all batches of frames in a directory.

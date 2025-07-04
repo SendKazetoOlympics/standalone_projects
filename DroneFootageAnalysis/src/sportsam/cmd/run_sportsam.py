@@ -63,9 +63,16 @@ def main():
 
         sam_handler = SAMHandler(frames_path=temp_dir, model=args.model)
         sam_handler.request_click()
-        results = sam_handler.analyze_videos(io_handler.temp_dir)
-        io_handler.save_output_masks(results)
-        io_handler.unbatch_frames()
+        results = sam_handler.segment_videos(io_handler.temp_dir)
 
-        # analyzer = Analyzer()
-        # sam_handler.analyze_videos(temp_dir)
+        io_handler.save_output_masks(results)
+        analyzer = Analyzer(results)
+
+        # TODO have analyzer do analyzer.analyze_results and store that in a self.dict?
+        zeroth_moments = analyzer.zeroth_image_moment()
+        first_moments = analyzer.first_image_moment()
+        # TODO put path onto videos
+        second_moments = analyzer.second_image_moment()
+
+        io_handler.unbatch_frames()
+        io_handler.recreate_videos_from_frames()
