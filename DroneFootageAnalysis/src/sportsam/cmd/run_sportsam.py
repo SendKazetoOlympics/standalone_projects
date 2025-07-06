@@ -50,7 +50,6 @@ def main():
 
     args = parser.parse_args()
 
-    # TODO rename temp_dir (in io_handler) as frames_dir so we can make frame directory permanent?
     with tempfile.TemporaryDirectory() as temp_dir:
         io_handler = IOHandler(temp_dir=temp_dir, output_dir=args.output_dir)
 
@@ -64,13 +63,18 @@ def main():
         results = sam_handler.segment_videos(io_handler.temp_dir)
 
         io_handler.save_output_masks(results)
-        analyzer = Analyzer(results)
+        io_handler.group_frames_by_video()
+        io_handler.unbatch_frames()
+        analyzer = Analyzer(results, io_handler.videos)
 
         # TODO have analyzer do analyzer.analyze_results and store that in a self.dict?
-        zeroth_moments = analyzer.zeroth_image_moment()
-        # TODO put path onto videos
-        first_moments = analyzer.first_image_moment()
-        second_moments = analyzer.second_image_moment()
 
-        io_handler.unbatch_frames()
-        io_handler.recreate_videos_from_frames()
+        # for video_idx, video in enumerate(io_handler.output subdirectories)
+        # zeroth_moments = analyzer.zeroth_image_moment(video_idx)
+        # first_moments = analyzer.first_image_moment(video_idx)
+        # second_moments = analyzer.second_image_moment(video_idx)
+        # create all the graphs and csvs
+        #
+        # io_handler.write_centroid(first_moments, video / "masks")
+        #
+        # io_handler.recreate_video_from_frames()

@@ -118,7 +118,7 @@ class SAMHandler:
         """
         click_coords = []
 
-        def mouse_callback(event, x, y, flags, param):
+        def mouse_callback(event, x, y, _flags, _param):
             if event == cv2.EVENT_LBUTTONDOWN:
                 click_coords.append((x, y))
                 print(f"Click at: ({x}, {y})")
@@ -191,7 +191,6 @@ class SAMHandler:
                 offload_video_to_cpu=False,
                 compute_device=self.predictor.device,
             )
-            # TODO change inference state without messing everything up?
             self.inference_state["images"] = images
             self.inference_state["num_frames"] = len(images)
             # self.inference_state["frames_tracked_per_obj"].clear()

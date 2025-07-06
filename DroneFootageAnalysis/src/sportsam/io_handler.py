@@ -9,8 +9,10 @@ import csv
 import shutil
 from pathlib import Path
 
+import cv2
 import decord
 import imageio
+import numpy as np
 import torch
 from jaxtyping import Int, Bool
 
@@ -18,14 +20,14 @@ from jaxtyping import Int, Bool
 class IOHandler:
     temp_dir: Path
     output_dir: Path
-    video_frame_counts: Int
+    videos: dict[Int, Int]
 
     def __init__(self, temp_dir: Path | str, output_dir: Path | str):
         """Initialize IOHandler with temporary and output directories.
+
         Args:
             temp_dir (Path | str): Path to the temporary directory for storing extracted frames.
             output_dir (Path | str): Path to the output directory where results will be saved.
-
         """
         if isinstance(temp_dir, str):
             temp_dir = Path(temp_dir)
@@ -42,7 +44,53 @@ class IOHandler:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         (self.output_dir / "masks").mkdir(parents=True, exist_ok=True)
-        self.video_frame_counts = []
+        self.videos = {}
+
+    def batch_frames(self, batch_size: int = 250) -> None:
+        """Organize extracted frames into batches.
+        Args:
+            batch_size (int, optional): Number of frames per batch. Defaults to 250.
+        """
+        frame_files = sorted(list(self.temp_dir.glob("*.jpg")))
+        if not frame_files:
+            print("No frames found to batch.")
+            return
+
+        batch_num = 0
+        for i in range(0, len(frame_files), batch_size):
+            batch_dir = self.temp_dir / f"batch{batch_num}"
+            batch_dir.mkdir(parents=True, exist_ok=True)
+
+            batch_files = frame_files[i : i + batch_size]
+            for frame_file in batch_files:
+                shutil.move(frame_file, batch_dir / frame_file.name)
+
+            batch_num += 1
+
+    def unbatch_frames(self) -> None:
+        """Move all frames from batch directories back to the directory root."""
+        batch_dirs = sorted(
+            [
+                d
+                for d in self.temp_dir.iterdir()
+                if d.is_dir() and d.name.startswith("batch")
+            ]
+        )
+
+        if not batch_dirs:
+            print("No batch directories found to unbatch.")
+            return
+
+        # Move all frames back to temp_dir
+        for batch_dir in batch_dirs:
+            frames = list(batch_dir.glob("*.jpg"))
+            for frame in frames:
+                shutil.move(frame, self.temp_dir / frame.name)
+
+            # Remove empty batch directory
+            batch_dir.rmdir()
+
+        print(f"Successfully unbatched frames from {len(batch_dirs)} directories.")
 
     # TODO different sized frames? Probably raise error if not all the same width/height
     def extract_frames_from_videos(self, videos: list[str]) -> None:
@@ -58,6 +106,7 @@ class IOHandler:
             raise ValueError("No video paths provided for frame extraction.")
 
         frame_count = 0
+        video_idx = 0
         for video in videos:
             video_path = Path(video)
 
@@ -87,61 +136,11 @@ class IOHandler:
                     f"Unsupported video file format: {video_path.suffix}. Please provide a video file with .mp4, .avi, or .mov extension."
                 )
 
-            self.video_frame_counts.append(frame_count - sum(self.video_frame_counts))
-            self.batch_frames()
-            print(f"Extracted frames from {video_path}...")
+            self.videos[video_idx] = frame_count - sum(self.videos)
+            video_idx += 1
 
-    def batch_frames(self, batch_size: int = 250) -> None:
-        """Organize extracted frames into batches.
-        Args:
-            batch_size (int, optional): Number of frames per batch. Defaults to 250.
-        """
-        frame_files = sorted(list(self.temp_dir.glob("*.jpg")))
-        if not frame_files:
-            print("No frames found to batch.")
-            return
-
-        batch_num = 0
-        for i in range(0, len(frame_files), batch_size):
-            batch_dir = self.temp_dir / f"batch{batch_num}"
-            batch_dir.mkdir(parents=True, exist_ok=True)
-
-            batch_files = frame_files[i : i + batch_size]
-            for frame_file in batch_files:
-                shutil.move(frame_file, batch_dir / frame_file.name)
-
-            batch_num += 1
-
-    def unbatch_frames(self) -> None:
-        """Move all frames from batch directories back to the temporary directory root.
-        This is the reverse operation of batch_frames().
-
-        Returns:
-            None
-        """
-        # Find all batch directories
-        batch_dirs = sorted(
-            [
-                d
-                for d in self.temp_dir.iterdir()
-                if d.is_dir() and d.name.startswith("batch")
-            ]
-        )
-
-        if not batch_dirs:
-            print("No batch directories found to unbatch.")
-            return
-
-        # Move all frames back to temp_dir
-        for batch_dir in batch_dirs:
-            frames = sorted(list(batch_dir.glob("*.jpg")))
-            for frame in frames:
-                shutil.move(frame, self.temp_dir / frame.name)
-
-            # Remove empty batch directory
-            batch_dir.rmdir()
-
-        print(f"Successfully unbatched frames from {len(batch_dirs)} directories.")
+        self.batch_frames()
+        print(f"Extracted frames from {video_path}...")
 
     def extract_frames_from_manifest(self, manifest: str) -> None:
         """Extract frames from a list of video files specified in a manifest file.
@@ -176,10 +175,22 @@ class IOHandler:
             for obj_id, mask in masks_dict.items():
                 torch.save(
                     torch.tensor(mask, dtype=torch.uint8),
-                    self.output_dir / f"masks/{frame_idx:05d}_{obj_id}_mask.pt",
+                    self.output_dir / f"/{frame_idx:05d}_{obj_id}_mask.pt",
                 )
 
-    def recreate_videos_from_frames(self) -> None:
+    def group_frames_by_video(self) -> None:
+        # TODO group mask frames by video from self.videos
+        # name each one by video{video_idx}, maybe later have original titles
+        # structure for each video:
+        # masks/
+        # visualization/
+        # graphs/
+        # csvs/
+        # output video
+        raise NotImplementedError
+
+    def recreate_video_from_frames_dir(self, video_dir: Path) -> None:
+        # TODO input path or video idx?
         raise NotImplementedError
 
     def save_inference_state(self):
@@ -188,9 +199,79 @@ class IOHandler:
     def load_inference_state(self):
         raise NotImplementedError
 
-    # TODO change according to what's next for analysis.py
-    # def create_graph(self, data: dict[Int ,dict[Int, Bool[torch.Tensor, "H W"]]]) -> None:
-    #     raise NotImplementedError
+    def write_centroid(
+        self,
+        first_moment: dict[Int, tuple[Int, Int]],
+        video_idx: Int,
+        obj_id: Int = 1,
+    ) -> None:
+        """Write object centroid position over time from first image moments.
+        For each frame, overlays the segmentation mask and draws tracking visualization
+        showing centroid position and movement trail.
+
+        Args:
+            first_moment (dict[Int, tuple[Int, Int]]): Dictionary mapping frame indices to (x,y) centroid coordinates,
+                as returned by Analyzer.first_image_moment()
+            video_idx (Int): Index of the video in videos dict.
+            obj_id (Int): ID of the object you want to track.
+        """
+
+        # Sort by frame index to ensure temporal ordering
+        tracking = []
+        for frame_idx in sorted(first_moment.keys()):
+            x, y = first_moment[frame_idx]
+            tracking.append((frame_idx, x, y))
+
+        # TODO leave this here?
+        # Create visualization directory
+        vis_dir = self.output_dir / f"video{video_idx}/visualization"
+        vis_dir.mkdir(exist_ok=True)
+
+        # For storing centroid trail
+        trail = []
+
+        # Process each frame
+        for frame_idx, x, y in tracking:
+            # Load original frame
+            frame_path = self.temp_dir / f"{frame_idx:05d}.jpg"
+            if not frame_path.exists():
+                continue
+            frame = cv2.imread(str(frame_path))
+
+            # Load and overlay mask if it exists
+            mask_path = (
+                self.output_dir
+                / f"video{video_idx}/masks/{frame_idx:05d}_{obj_id}_mask.pt"
+            )
+            if mask_path.exists():
+                mask = torch.load(mask_path).numpy().astype(np.uint8)
+                mask_overlay = np.zeros_like(frame)
+                mask_overlay[mask == 1] = [0, 255, 0]  # Green overlay
+                frame = cv2.addWeighted(frame, 1.0, mask_overlay, 0.3, 0)
+
+            # Draw centroid trail
+            trail.append((x, y))
+            if len(trail) > 10:
+                # Draw line connecting previous centroids
+                points = np.array(trail[-10:], dtype=np.int32)  # Keep last 10 points
+                cv2.polylines(frame, [points], False, (0, 0, 255), 2)
+
+            # Draw current centroid position
+            cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)  # Blue dot
+
+            # Save visualization
+            vis_path = vis_dir / f"{frame_idx:05d}_tracked.jpg"
+            cv2.imwrite(str(vis_path), frame)
+
+    def create_graph(
+        self, data: dict[Int, Int], title: str, x_axis_title: str, y_axis_title: str
+    ) -> None:
+        """Create a plot of a given data set"""
+        # x_axis (str): Label for the x-axis.
+        # y_axis (str): Label for the y-axis.
+        # title (str): Title of the graph.
+        # self.output_dir/graphs
+        raise NotImplementedError
 
     # TODO split back into original videos
 
