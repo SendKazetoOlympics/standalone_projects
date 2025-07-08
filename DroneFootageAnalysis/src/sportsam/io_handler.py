@@ -68,7 +68,7 @@ class IOHandler:
             batch_num += 1
 
     def unbatch_frames(self) -> None:
-        """Move all frames from batch directories back to the directory root."""
+        """Move all frames from batch directories back to temp_dir."""
         batch_dirs = sorted(
             [
                 d
@@ -199,6 +199,7 @@ class IOHandler:
     def load_inference_state(self):
         raise NotImplementedError
 
+    # TODO rethink implementation
     def write_centroid(
         self,
         first_moment: dict[Int, tuple[Int, Int]],
@@ -232,7 +233,7 @@ class IOHandler:
 
         # Process each frame
         for frame_idx, x, y in tracking:
-            # Load original frame
+            # Load original frame; temp_dir MUST BE UNBATCHED
             frame_path = self.temp_dir / f"{frame_idx:05d}.jpg"
             if not frame_path.exists():
                 continue

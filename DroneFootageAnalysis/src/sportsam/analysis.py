@@ -1,39 +1,51 @@
+from pathlib import Path
+
 import torch
 from jaxtyping import Int, Bool
 
 
 class Analyzer:
-    data: dict[Int, dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]]
+    # data: dict[Int, dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]]
     # data: dict of videos, which is a dict of frames, each frame is a dict of (object_index, mask tensor)
 
-    def __init__(
-        self,
-        data: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]],
-        videos: dict[Int, Int],
-    ):
-        # TODO split by video frames from io_handler
-        self.data = data
+    # def __init__(
+    #     self,
+    #     data: dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]],
+    #     videos: dict[Int, Int],
+    # ):
+    #     # TODO split by video frames from io_handler
+    #     self.data = data
 
-    def zeroth_image_moment(self, video_idx: Int, object_id: Int = 1) -> dict[Int, Int]:
+    @staticmethod
+    def _load_data_from_dir(
+        frames_dir: Path,
+    ) -> dict[Int, dict[Int, Bool[torch.Tensor, "H W"]]]:
+        raise NotImplementedError
+
+    @staticmethod
+    def zeroth_image_moment(frames_dir: Path, object_id: Int = 1) -> dict[Int, Int]:
         """Calculate the zeroth moment (area) of binary masks for each frame.
 
         Args:
-            video_idx: Index of video in io_handler dict.
-            object_id: Object ID to calculate area for. Defaults to 1.
+            frames_dir (Path): Path object to the current directory of where all the data to be analyzed is stored.
+            object_id (Int): Object ID to calculate area for. Defaults to 1.
 
         Returns:
             A dictionary mapping frame indices to the area of the specified object in that frame.
             Area is calculated by summing all True values in the binary mask.
             Only includes frames where the specified object exists.
         """
+        data = Analyzer._load_data_from_dir(frames_dir)
+
         result = {}
-        for frame_idx, objects in self.data[video_idx].items():
+        for frame_idx, objects in data.items():
             # Calculate area only for specified object if it exists in this frame
             if object_id in objects:
                 mask = objects[object_id]
                 result[frame_idx] = int(torch.sum(mask.float()).item())
         return result
 
+    # TODO match first and second image moments
     def first_image_moment(
         self, video_idx: Int, object_id: Int = 1
     ) -> dict[Int, tuple[Int, Int]]:

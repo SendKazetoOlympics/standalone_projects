@@ -65,16 +65,16 @@ def main():
         io_handler.save_output_masks(results)
         io_handler.group_frames_by_video()
         io_handler.unbatch_frames()
-        analyzer = Analyzer(results, io_handler.videos)
+        # analyzer = Analyzer(results, io_handler.videos)
 
         # TODO have analyzer do analyzer.analyze_results and store that in a self.dict?
 
-        # for video_idx, video in enumerate(io_handler.output subdirectories)
-        # zeroth_moments = analyzer.zeroth_image_moment(video_idx)
-        # first_moments = analyzer.first_image_moment(video_idx)
-        # second_moments = analyzer.second_image_moment(video_idx)
+        # for video_dir in io_handler.output subdirectories
+        # zeroth_moments = Analyzer.zeroth_image_moment(video_dir)
+        # first_moments = Analyzer.first_image_moment(video_dir)
+        # second_moments = Analyzer.second_image_moment(video_dir)
         # create all the graphs and csvs
         #
-        # io_handler.write_centroid(first_moments, video / "masks")
+        # io_handler.write_centroid()
         #
         # io_handler.recreate_video_from_frames()
