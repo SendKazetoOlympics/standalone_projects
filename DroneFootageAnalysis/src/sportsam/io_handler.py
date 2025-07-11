@@ -12,6 +12,7 @@ from pathlib import Path
 import cv2
 import decord
 import imageio
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from jaxtyping import Int, Bool
@@ -264,17 +265,29 @@ class IOHandler:
             vis_path = vis_dir / f"{frame_idx:05d}_tracked.jpg"
             cv2.imwrite(str(vis_path), frame)
 
+    @staticmethod
     def create_graph(
-        self, data: dict[Int, Int], title: str, x_axis_title: str, y_axis_title: str
+        graph_dir: Path,
+        title: str,
+        x_data: list[Int],
+        x_axis_title: str,
+        y_data: list[Int],
+        y_axis_title: str,
     ) -> None:
-        """Create a plot of a given data set"""
+        """Create a plot of a given data set."""
         # x_axis (str): Label for the x-axis.
         # y_axis (str): Label for the y-axis.
         # title (str): Title of the graph.
-        # self.output_dir/graphs
-        raise NotImplementedError
 
-    # TODO split back into original videos
+        plt.figure(figsize=(10, 5))
+        plt.plot(x_data, y_data, marker="o", linestyle="-")
+        plt.xlabel(x_axis_title)
+        plt.ylabel(y_axis_title)
+        plt.title(title)
+        plt.grid(True)
+        plt.savefig(str(graph_dir / f"{title}.png"), dpi=150, bbox_inches="tight")
+        plt.close()
+        print(f"{title} graph saved in: {graph_dir}")
 
 
 ##### TODO refactor everything below #####
