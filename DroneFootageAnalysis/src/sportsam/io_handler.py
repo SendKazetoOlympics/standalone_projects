@@ -190,7 +190,7 @@ class IOHandler:
         raise NotImplementedError
 
     def recreate_video_from_frames_dir(self, video_dir: Path) -> None:
-        # TODO input path or video idx?
+        # TODO input path
         raise NotImplementedError
 
     def save_inference_state(self):
