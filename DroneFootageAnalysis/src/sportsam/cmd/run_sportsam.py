@@ -70,13 +70,83 @@ def main():
         video_dirs = [p for p in io_handler.output_dir.iterdir() if p.is_dir()]
         video_dirs = sorted(video_dirs, key=lambda p: p.name)
         for video_idx, video_dir in enumerate(video_dirs):
-            zeroth_moments = Analyzer.zeroth_image_moment(video_dir)
-            first_moments = Analyzer.first_image_moment(video_dir)
-            second_moments = Analyzer.second_image_moment(video_dir)
+            mask_dir = video_dir / "masks"
+            graphs_dir = video_dir / "graphs"
+            csv_dir = video_dir / "csvs"
+            visualization_dir = video_dir / "visualization"
 
-            # TODO turn moments data into lists?
-            # IOHandler.create_graph(video_dir, "Area Over Time", zeroth_moments)
-            # create all the graphs and csvs
-            # io_handler.create_graph()
+            zeroth_moments = Analyzer.zeroth_image_moment(mask_dir)
+            first_moments = Analyzer.first_image_moment(mask_dir)
+            second_moments = Analyzer.second_image_moment(mask_dir)
+
+            # TODO make this all a loop? This is crazy repetitive and disgusting
+
+            # TODO csvs
+            # First convert data dicts to lists, then write
+            area_frames, area_list = IOHandler.convert_data_dict_to_list(zeroth_moments)
+            IOHandler.create_graph(
+                graphs_dir, "area.png", area_frames, "Frame", area_list, "Area (pixels)"
+            )
+
+            x_data_frames, x_data_list = IOHandler.convert_data_dict_to_list(
+                first_moments, tuple_index=0
+            )
+            IOHandler.create_graph(
+                graphs_dir,
+                "x_data.png",
+                x_data_frames,
+                "Frame",
+                x_data_list,
+                "x-value (pixels)",
+            )
+
+            y_data_frames, y_data_list = IOHandler.convert_data_dict_to_list(
+                first_moments, tuple_index=1
+            )
+            IOHandler.create_graph(
+                graphs_dir,
+                "y_data.png",
+                y_data_frames,
+                "Frame",
+                y_data_list,
+                "y-value (pixels)",
+            )
+
+            xx_data_frames, xx_data_list = IOHandler.convert_data_dict_to_list(
+                second_moments, tuple_index=0
+            )
+            IOHandler.create_graph(
+                graphs_dir,
+                "xx_data.png",
+                xx_data_frames,
+                "Frame",
+                xx_data_list,
+                "xx-value (pixels)",
+            )
+
+            yy_data_frames, yy_data_list = IOHandler.convert_data_dict_to_list(
+                second_moments, tuple_index=1
+            )
+            IOHandler.create_graph(
+                graphs_dir,
+                "yy_data.png",
+                yy_data_frames,
+                "Frame",
+                yy_data_list,
+                "yy-value (pixels)",
+            )
+
+            xy_data_frames, xy_data_list = IOHandler.convert_data_dict_to_list(
+                second_moments, tuple_index=2
+            )
+            IOHandler.create_graph(
+                graphs_dir,
+                "xy_data.png",
+                xy_data_frames,
+                "Frame",
+                xy_data_list,
+                "xy-value (pixels)",
+            )
+
             io_handler.write_centroid(first_moments, video_idx)
-            # io_handler.recreate_video_from_frames()
+            IOHandler.recreate_video_from_frames_dir(video_dir / "visualization")

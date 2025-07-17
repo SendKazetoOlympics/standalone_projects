@@ -206,9 +206,9 @@ class IOHandler:
 
             # Create subdirectories
             (video_dir / "masks").mkdir(parents=True, exist_ok=True)
-            (video_dir / "visualization").mkdir(parents=True, exist_ok=True)
             (video_dir / "graphs").mkdir(parents=True, exist_ok=True)
             (video_dir / "csvs").mkdir(parents=True, exist_ok=True)
+            (video_dir / "visualization").mkdir(parents=True, exist_ok=True)
 
         # Move mask files to appropriate video directories
         for mask_file in mask_files:
@@ -238,9 +238,91 @@ class IOHandler:
         print(f"Successfully grouped masks into {len(self.videos)} video directories")
 
     @staticmethod
-    def recreate_video_from_frames_dir(video_dir: Path) -> None:
-        # TODO input path
-        raise NotImplementedError
+    def recreate_video_from_frames_dir(
+        video_dir: Path,
+        framerate: float = 30.0,  # TODO save framerate somewhere?
+        output_filename: str = "output_video.mp4",
+    ) -> bool:
+        """Create MP4 video from sequence of JPEG images in a directory using OpenCV.
+
+        Args:
+            video_dir (Path): Directory containing input JPEG frames
+            framerate (float): Frames per second for the output video. Defaults to 30.0.
+            output_filename (str): Name of the output video file. Defaults to "output_video.mp4".
+
+        Returns:
+            bool: True if successful, False otherwise
+
+        Raises:
+            FileNotFoundError: If video_dir does not exist or contains no JPEG files
+        """
+        # Ensure input directory exists
+        if not video_dir.exists():
+            raise FileNotFoundError(f"Video directory '{video_dir}' not found.")
+
+        if not video_dir.is_dir():
+            raise ValueError(f"Path '{video_dir}' is not a directory.")
+
+        # Check if input images exist
+        frame_files = list(video_dir.glob("*.jpg"))
+        if not frame_files:
+            raise FileNotFoundError(f"No JPEG files found in '{video_dir}'.")
+
+        # Sort frame files to ensure proper order
+        frame_files.sort()
+
+        # Get output file path
+        output_file = video_dir / output_filename
+
+        try:
+            print(f"Creating video from frames in '{video_dir}'...")
+
+            # Read first frame to get dimensions
+            first_frame = cv2.imread(str(frame_files[0]))
+            if first_frame is None:
+                print(f"Error: Could not read first frame '{frame_files[0]}'")
+                return False
+
+            height, width, _channels = first_frame.shape
+
+            # Define the codec and create VideoWriter object
+            fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+            video_writer = cv2.VideoWriter(
+                str(output_file), fourcc, framerate, (width, height)
+            )
+
+            if not video_writer.isOpened():
+                print("Error: Could not open video writer")
+                return False
+
+            # Write each frame to the video
+            frames_written = 0
+            for frame_file in frame_files:
+                frame = cv2.imread(str(frame_file))
+                if frame is None:
+                    print(f"Warning: Could not read frame '{frame_file}', skipping...")
+                    continue
+
+                # Ensure frame has correct dimensions
+                if frame.shape[:2] != (height, width):
+                    print(
+                        f"Warning: Frame '{frame_file}' has different dimensions, resizing..."
+                    )
+                    frame = cv2.resize(frame, (width, height))
+
+                video_writer.write(frame)
+                frames_written += 1
+
+            # Release the video writer
+            video_writer.release()
+
+            print(f"Successfully created video: '{output_file}'")
+            print(f"Used {frames_written} frames at {framerate} fps")
+            return True
+
+        except Exception as e:
+            print(f"Error creating video: {e}")
+            return False
 
     def save_inference_state(self):
         raise NotImplementedError
@@ -248,6 +330,7 @@ class IOHandler:
     def load_inference_state(self):
         raise NotImplementedError
 
+    # TODO this definitely needs to be refactored
     def write_centroid(
         self,
         first_moment: dict[Int, tuple[Int, Int]],
@@ -314,17 +397,23 @@ class IOHandler:
 
     @staticmethod
     def create_graph(
-        graph_dir: Path,
+        output_dir: Path,
         title: str,
         x_data: list[Int],
         x_axis_title: str,
         y_data: list[Int],
         y_axis_title: str,
     ) -> None:
-        """Create a plot of a given data set."""
-        # x_axis (str): Label for the x-axis.
-        # y_axis (str): Label for the y-axis.
-        # title (str): Title of the graph.
+        """Create a plot of a given data set and save it as a PNG image.
+
+        Args:
+            output_dir (Path): Directory where the graph image will be saved.
+            title (str): Title of the graph, also used as the filename (with .png extension).
+            x_data (list[Int]): Data points for the x-axis.
+            x_axis_title (str): Label for the x-axis.
+            y_data (list[Int]): Data points for the y-axis.
+            y_axis_title (str): Label for the y-axis.
+        """
 
         plt.figure(figsize=(10, 5))
         plt.plot(x_data, y_data, marker="o", linestyle="-")
@@ -332,9 +421,80 @@ class IOHandler:
         plt.ylabel(y_axis_title)
         plt.title(title)
         plt.grid(True)
-        plt.savefig(str(graph_dir / f"{title}.png"), dpi=150, bbox_inches="tight")
+        plt.savefig(str(output_dir / f"{title}.png"), dpi=150, bbox_inches="tight")
         plt.close()
-        print(f"{title} graph saved in: {graph_dir}")
+        print(f"{title} graph saved in: {output_dir}")
+
+    @staticmethod
+    def convert_data_dict_to_list(
+        data_dict: dict, sort_by_key: bool = True, tuple_index: int | None = None
+    ) -> tuple[list, list]:
+        """Convert a dictionary of data to a list format for easier processing.
+
+        Args:
+            data_dict (dict): Dictionary to convert. Can handle various formats:
+                - dict[int, int]: frame_idx -> value (e.g., areas)
+                - dict[int, tuple]: frame_idx -> (x, y) (e.g., centroids)
+                - dict[int, tuple]: frame_idx -> (xx, yy, xy) (e.g., second moments)
+            sort_by_key (bool): Whether to sort by dictionary keys. Defaults to True.
+            tuple_index (int | None): If provided, extract this index from tuple values.
+                For example, tuple_index=0 extracts x-coordinates from centroids.
+                Defaults to None (return full tuples).
+
+        Returns:
+            tuple[list, list]: (keys_list, values_list) where:
+                - keys_list: List of dictionary keys (typically frame indices)
+                - values_list: List of dictionary values (scalars, tuples, or extracted elements)
+
+        Examples:
+            >>> areas = {0: 100, 1: 120, 2: 90}
+            >>> keys, values = IOHandler.convert_data_dict_to_list(areas)
+            >>> # keys = [0, 1, 2], values = [100, 120, 90]
+
+            >>> centroids = {0: (10, 20), 1: (15, 25), 2: (12, 18)}
+            >>> keys, values = IOHandler.convert_data_dict_to_list(centroids)
+            >>> # keys = [0, 1, 2], values = [(10, 20), (15, 25), (12, 18)]
+
+            >>> # Extract x-coordinates only
+            >>> keys, x_coords = IOHandler.convert_data_dict_to_list(centroids, tuple_index=0)
+            >>> # keys = [0, 1, 2], x_coords = [10, 15, 12]
+
+            >>> # Extract y-coordinates only
+            >>> keys, y_coords = IOHandler.convert_data_dict_to_list(centroids, tuple_index=1)
+            >>> # keys = [0, 1, 2], y_coords = [20, 25, 18]
+        """
+        if not data_dict:
+            return [], []
+
+        # Get items from dictionary
+        items = list(data_dict.items())
+
+        # Sort by key if requested
+        if sort_by_key:
+            items.sort(key=lambda x: x[0])
+
+        # Separate keys and values
+        keys = [item[0] for item in items]
+        values = [item[1] for item in items]
+
+        # Extract specific tuple element if requested
+        if tuple_index is not None:
+            extracted_values = []
+            for value in values:
+                if isinstance(value, (tuple, list)):
+                    try:
+                        extracted_values.append(value[tuple_index])
+                    except IndexError:
+                        raise IndexError(
+                            f"tuple_index {tuple_index} is out of range for tuple {value}"
+                        )
+                else:
+                    raise TypeError(
+                        f"tuple_index provided but value {value} is not a tuple or list"
+                    )
+            values = extracted_values
+
+        return keys, values
 
 
 ##### TODO refactor everything below #####
