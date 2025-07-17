@@ -44,7 +44,6 @@ class IOHandler:
             )
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        (self.output_dir / "masks").mkdir(parents=True, exist_ok=True)
         self.videos = {}
 
     def batch_frames(self, batch_size: int = 250) -> None:
@@ -180,17 +179,66 @@ class IOHandler:
                 )
 
     def group_frames_by_video(self) -> None:
-        # TODO group mask frames by video from self.videos
-        # name each one by video{video_idx}, maybe later have original titles
-        # structure for each video:
-        # masks/
-        # visualization/
-        # graphs/
-        # csvs/
-        # output video
-        raise NotImplementedError
+        """Group mask files by video and create organized directory structure."""
+        if not self.videos:
+            print("No video mapping found. Cannot group frames by video.")
+            return
 
-    def recreate_video_from_frames_dir(self, video_dir: Path) -> None:
+        # Get all mask files from the main masks directory
+        masks_dir = self.output_dir
+
+        mask_files = list(masks_dir.glob("*_mask.pt"))
+        if not mask_files:
+            print("No mask files found to group.")
+            return
+
+        # Calculate frame ranges for each video
+        frame_ranges = {}
+        current_frame = 0
+        for video_idx, frame_count in self.videos.items():
+            frame_ranges[video_idx] = (current_frame, current_frame + frame_count - 1)
+            current_frame += frame_count
+
+        # Create directory structure for each video
+        for video_idx in self.videos.keys():
+            video_dir = self.output_dir / f"video{video_idx}"
+            video_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create subdirectories
+            (video_dir / "masks").mkdir(parents=True, exist_ok=True)
+            (video_dir / "visualization").mkdir(parents=True, exist_ok=True)
+            (video_dir / "graphs").mkdir(parents=True, exist_ok=True)
+            (video_dir / "csvs").mkdir(parents=True, exist_ok=True)
+
+        # Move mask files to appropriate video directories
+        for mask_file in mask_files:
+            # Extract frame index from filename (format: {frame_idx:05d}_{obj_id}_mask.pt)
+            filename = mask_file.name
+            try:
+                frame_idx = int(filename.split("_")[0])
+            except (ValueError, IndexError):
+                print(f"Warning: Could not parse frame index from {filename}")
+                continue
+
+            # Find which video this frame belongs to
+            target_video = None
+            for video_idx, (start_frame, end_frame) in frame_ranges.items():
+                if start_frame <= frame_idx <= end_frame:
+                    target_video = video_idx
+                    break
+
+            if target_video is not None:
+                # Move mask file to video-specific masks directory
+                target_dir = self.output_dir / f"video{target_video}" / "masks"
+                target_path = target_dir / filename
+                shutil.move(str(mask_file), str(target_path))
+            else:
+                print(f"Warning: Frame {frame_idx} does not belong to any video range")
+
+        print(f"Successfully grouped masks into {len(self.videos)} video directories")
+
+    @staticmethod
+    def recreate_video_from_frames_dir(video_dir: Path) -> None:
         # TODO input path
         raise NotImplementedError
 
@@ -200,7 +248,6 @@ class IOHandler:
     def load_inference_state(self):
         raise NotImplementedError
 
-    # TODO rethink implementation
     def write_centroid(
         self,
         first_moment: dict[Int, tuple[Int, Int]],
@@ -224,7 +271,7 @@ class IOHandler:
             x, y = first_moment[frame_idx]
             tracking.append((frame_idx, x, y))
 
-        # TODO leave this here?
+        # TODO leave this here? It's already done in group_frames_by_video
         # Create visualization directory
         vis_dir = self.output_dir / f"video{video_idx}/visualization"
         vis_dir.mkdir(exist_ok=True)

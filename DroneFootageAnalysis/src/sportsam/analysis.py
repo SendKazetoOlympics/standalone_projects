@@ -36,6 +36,7 @@ class Analyzer:
             data[frame_number][obj_id] = mask
         return data
 
+    # TODO are dicts the best way to do this? Makes it harder to use since most graph/csv functions need a list
     @staticmethod
     def zeroth_image_moment(frames_dir: Path, object_id: Int = 1) -> dict[Int, Int]:
         """Calculate the zeroth moment (area) of binary masks for each frame.

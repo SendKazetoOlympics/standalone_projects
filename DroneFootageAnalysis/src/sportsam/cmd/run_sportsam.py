@@ -64,16 +64,19 @@ def main():
 
         io_handler.save_output_masks(results)
         io_handler.group_frames_by_video()
+        # Unbatch the temp files for use with write_centroid()
         io_handler.unbatch_frames()
 
         video_dirs = [p for p in io_handler.output_dir.iterdir() if p.is_dir()]
-        for video_dir in video_dirs:
+        video_dirs = sorted(video_dirs, key=lambda p: p.name)
+        for video_idx, video_dir in enumerate(video_dirs):
             zeroth_moments = Analyzer.zeroth_image_moment(video_dir)
             first_moments = Analyzer.first_image_moment(video_dir)
             second_moments = Analyzer.second_image_moment(video_dir)
+
+            # TODO turn moments data into lists?
+            # IOHandler.create_graph(video_dir, "Area Over Time", zeroth_moments)
             # create all the graphs and csvs
             # io_handler.create_graph()
-        #
-        # io_handler.write_centroid()
-        #
-        # io_handler.recreate_video_from_frames()
+            io_handler.write_centroid(first_moments, video_idx)
+            # io_handler.recreate_video_from_frames()
