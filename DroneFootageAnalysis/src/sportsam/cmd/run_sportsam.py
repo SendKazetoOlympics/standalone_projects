@@ -148,5 +148,5 @@ def main():
                 "xy-value (pixels)",
             )
 
-            io_handler.write_centroid(first_moments, video_idx)
-            IOHandler.recreate_video_from_frames_dir(video_dir / "visualization")
+            # io_handler.write_centroid(first_moments, video_idx)
+            # IOHandler.recreate_video_from_frames_dir(video_dir / "visualization")

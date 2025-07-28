@@ -101,9 +101,9 @@ class SAMHandler:
         )
 
         # TODO loads batch0 twice, need to do something about that
-        # self.inference_state = self.predictor.init_state(
-        #     video_path=str(self.frames_path / "batch0")
-        # )
+        self.inference_state = self.predictor.init_state(
+            video_path=str(self.frames_path / "batch0")
+        )
 
     # def request_prompt(self):
     #     pass
