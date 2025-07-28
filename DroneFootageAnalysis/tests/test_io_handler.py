@@ -125,3 +125,35 @@ def test_extract_frames_from_manifest_wrong_format(temp_and_output_dirs):
     txt_file.write_text("not a csv")
     with pytest.raises(ValueError):
         handler.extract_frames_from_manifest(str(txt_file))
+
+def test_batch_and_unbatch_frames(temp_and_output_dirs):
+    temp_dir, output_dir = temp_and_output_dirs
+    handler = IOHandler(temp_dir, output_dir)
+    
+    # Create some test frames
+    for i in range(5):
+        (temp_dir / f"{i:05d}.jpg").write_bytes(b"fake frame")
+    
+    # Test batching
+    handler.batch_frames(batch_size=2)  # Small batch size for testing
+    
+    # Check batches were created correctly
+    batch_dirs = sorted(d for d in temp_dir.iterdir() if d.is_dir() and d.name.startswith("batch"))
+    assert len(batch_dirs) == 3  # Should create 3 batches: 2 + 2 + 1 frames
+    
+    frames_in_batches = []
+    for batch_dir in batch_dirs:
+        frames = sorted(list(batch_dir.glob("*.jpg")))
+        frames_in_batches.extend(frames)
+    assert len(frames_in_batches) == 5  # All frames accounted for
+    
+    # Test unbatching
+    handler.unbatch_frames()
+    
+    # Verify all frames are back in temp_dir
+    frames = sorted(list(temp_dir.glob("*.jpg")))
+    assert len(frames) == 5
+    
+    # Verify no batch directories remain
+    remaining_batch_dirs = [d for d in temp_dir.iterdir() if d.is_dir() and d.name.startswith("batch")]
+    assert len(remaining_batch_dirs) == 0

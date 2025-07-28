@@ -4,14 +4,13 @@ sam_handler.py
 Handles interaction with the SAM model, including mask visualization, user input, and main segmentation logic.
 """
 
-import cv2
-import numpy as np
-
 import enum
 import urllib.request
 from pathlib import Path
 from typing import Any
 
+import cv2
+import numpy as np
 import torch
 from jaxtyping import Bool, Int
 from sam2.build_sam import build_sam2_video_predictor
@@ -102,9 +101,9 @@ class SAMHandler:
         )
 
         # TODO loads batch0 twice, need to do something about that
-        self.inference_state = self.predictor.init_state(
-            video_path=str(self.frames_path / "batch0")
-        )
+        # self.inference_state = self.predictor.init_state(
+        #     video_path=str(self.frames_path / "batch0")
+        # )
 
     # def request_prompt(self):
     #     pass
@@ -123,6 +122,7 @@ class SAMHandler:
                 click_coords.append((x, y))
                 print(f"Click at: ({x}, {y})")
 
+        # TODO batch0 is hardcoded, need to support other batches
         frame_path = self.frames_path / f"batch0/{frame_idx:05d}.jpg"
         if not frame_path.exists():
             raise FileNotFoundError(f"Image at {str(frame_path)} does not exist")
@@ -130,7 +130,7 @@ class SAMHandler:
         if img is None:
             raise ValueError(f"Could not read image at {str(frame_path)}")
 
-        cv2.namedWindow("Click on the object")
+        cv2.namedWindow("Click on the object", cv2.WINDOW_AUTOSIZE)
         cv2.setMouseCallback("Click on the object", mouse_callback)
 
         while True:

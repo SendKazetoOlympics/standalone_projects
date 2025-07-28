@@ -9,11 +9,9 @@ import csv
 import shutil
 from pathlib import Path
 
-import cv2
 import decord
 import imageio
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
 from jaxtyping import Int, Bool
 
@@ -237,92 +235,93 @@ class IOHandler:
 
         print(f"Successfully grouped masks into {len(self.videos)} video directories")
 
-    @staticmethod
-    def recreate_video_from_frames_dir(
-        video_dir: Path,
-        framerate: float = 30.0,  # TODO save framerate somewhere?
-        output_filename: str = "output_video.mp4",
-    ) -> bool:
-        """Create MP4 video from sequence of JPEG images in a directory using OpenCV.
-
-        Args:
-            video_dir (Path): Directory containing input JPEG frames
-            framerate (float): Frames per second for the output video. Defaults to 30.0.
-            output_filename (str): Name of the output video file. Defaults to "output_video.mp4".
-
-        Returns:
-            bool: True if successful, False otherwise
-
-        Raises:
-            FileNotFoundError: If video_dir does not exist or contains no JPEG files
-        """
-        # Ensure input directory exists
-        if not video_dir.exists():
-            raise FileNotFoundError(f"Video directory '{video_dir}' not found.")
-
-        if not video_dir.is_dir():
-            raise ValueError(f"Path '{video_dir}' is not a directory.")
-
-        # Check if input images exist
-        frame_files = list(video_dir.glob("*.jpg"))
-        if not frame_files:
-            raise FileNotFoundError(f"No JPEG files found in '{video_dir}'.")
-
-        # Sort frame files to ensure proper order
-        frame_files.sort()
-
-        # Get output file path
-        output_file = video_dir / output_filename
-
-        try:
-            print(f"Creating video from frames in '{video_dir}'...")
-
-            # Read first frame to get dimensions
-            first_frame = cv2.imread(str(frame_files[0]))
-            if first_frame is None:
-                print(f"Error: Could not read first frame '{frame_files[0]}'")
-                return False
-
-            height, width, _channels = first_frame.shape
-
-            # Define the codec and create VideoWriter object
-            fourcc = cv2.VideoWriter.fourcc(*"mp4v")
-            video_writer = cv2.VideoWriter(
-                str(output_file), fourcc, framerate, (width, height)
-            )
-
-            if not video_writer.isOpened():
-                print("Error: Could not open video writer")
-                return False
-
-            # Write each frame to the video
-            frames_written = 0
-            for frame_file in frame_files:
-                frame = cv2.imread(str(frame_file))
-                if frame is None:
-                    print(f"Warning: Could not read frame '{frame_file}', skipping...")
-                    continue
-
-                # Ensure frame has correct dimensions
-                if frame.shape[:2] != (height, width):
-                    print(
-                        f"Warning: Frame '{frame_file}' has different dimensions, resizing..."
-                    )
-                    frame = cv2.resize(frame, (width, height))
-
-                video_writer.write(frame)
-                frames_written += 1
-
-            # Release the video writer
-            video_writer.release()
-
-            print(f"Successfully created video: '{output_file}'")
-            print(f"Used {frames_written} frames at {framerate} fps")
-            return True
-
-        except Exception as e:
-            print(f"Error creating video: {e}")
-            return False
+    # TODO this is broken since I can't import cv2 in this file for some reason?!?!
+    # @staticmethod
+    # def recreate_video_from_frames_dir(
+    #     video_dir: Path,
+    #     framerate: float = 30.0,  # TODO save framerate somewhere?
+    #     output_filename: str = "output_video.mp4",
+    # ) -> bool:
+    #     """Create MP4 video from sequence of JPEG images in a directory using OpenCV.
+    #
+    #     Args:
+    #         video_dir (Path): Directory containing input JPEG frames
+    #         framerate (float): Frames per second for the output video. Defaults to 30.0.
+    #         output_filename (str): Name of the output video file. Defaults to "output_video.mp4".
+    #
+    #     Returns:
+    #         bool: True if successful, False otherwise
+    #
+    #     Raises:
+    #         FileNotFoundError: If video_dir does not exist or contains no JPEG files
+    #     """
+    #     # Ensure input directory exists
+    #     if not video_dir.exists():
+    #         raise FileNotFoundError(f"Video directory '{video_dir}' not found.")
+    #
+    #     if not video_dir.is_dir():
+    #         raise ValueError(f"Path '{video_dir}' is not a directory.")
+    #
+    #     # Check if input images exist
+    #     frame_files = list(video_dir.glob("*.jpg"))
+    #     if not frame_files:
+    #         raise FileNotFoundError(f"No JPEG files found in '{video_dir}'.")
+    #
+    #     # Sort frame files to ensure proper order
+    #     frame_files.sort()
+    #
+    #     # Get output file path
+    #     output_file = video_dir / output_filename
+    #
+    #     try:
+    #         print(f"Creating video from frames in '{video_dir}'...")
+    #
+    #         # Read first frame to get dimensions
+    #         first_frame = cv2.imread(str(frame_files[0]))
+    #         if first_frame is None:
+    #             print(f"Error: Could not read first frame '{frame_files[0]}'")
+    #             return False
+    #
+    #         height, width, _channels = first_frame.shape
+    #
+    #         # Define the codec and create VideoWriter object
+    #         fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+    #         video_writer = cv2.VideoWriter(
+    #             str(output_file), fourcc, framerate, (width, height)
+    #         )
+    #
+    #         if not video_writer.isOpened():
+    #             print("Error: Could not open video writer")
+    #             return False
+    #
+    #         # Write each frame to the video
+    #         frames_written = 0
+    #         for frame_file in frame_files:
+    #             frame = cv2.imread(str(frame_file))
+    #             if frame is None:
+    #                 print(f"Warning: Could not read frame '{frame_file}', skipping...")
+    #                 continue
+    #
+    #             # Ensure frame has correct dimensions
+    #             if frame.shape[:2] != (height, width):
+    #                 print(
+    #                     f"Warning: Frame '{frame_file}' has different dimensions, resizing..."
+    #                 )
+    #                 frame = cv2.resize(frame, (width, height))
+    #
+    #             video_writer.write(frame)
+    #             frames_written += 1
+    #
+    #         # Release the video writer
+    #         video_writer.release()
+    #
+    #         print(f"Successfully created video: '{output_file}'")
+    #         print(f"Used {frames_written} frames at {framerate} fps")
+    #         return True
+    #
+    #     except Exception as e:
+    #         print(f"Error creating video: {e}")
+    #         return False
 
     def save_inference_state(self):
         raise NotImplementedError
@@ -330,70 +329,71 @@ class IOHandler:
     def load_inference_state(self):
         raise NotImplementedError
 
+    # TODO this is broken since I can't import cv2 in this file for some reason?!?!
     # TODO this definitely needs to be refactored
-    def write_centroid(
-        self,
-        first_moment: dict[Int, tuple[Int, Int]],
-        video_idx: Int,
-        obj_id: Int = 1,
-    ) -> None:
-        """Write object centroid position over time from first image moments.
-        For each frame, overlays the segmentation mask and draws tracking visualization
-        showing centroid position and movement trail.
-
-        Args:
-            first_moment (dict[Int, tuple[Int, Int]]): Dictionary mapping frame indices to (x,y) centroid coordinates,
-                as returned by Analyzer.first_image_moment()
-            video_idx (Int): Index of the video in videos dict.
-            obj_id (Int): ID of the object you want to track.
-        """
-
-        # Sort by frame index to ensure temporal ordering
-        tracking = []
-        for frame_idx in sorted(first_moment.keys()):
-            x, y = first_moment[frame_idx]
-            tracking.append((frame_idx, x, y))
-
-        # TODO leave this here? It's already done in group_frames_by_video
-        # Create visualization directory
-        vis_dir = self.output_dir / f"video{video_idx}/visualization"
-        vis_dir.mkdir(exist_ok=True)
-
-        # For storing centroid trail
-        trail = []
-
-        # Process each frame
-        for frame_idx, x, y in tracking:
-            # Load original frame; temp_dir MUST BE UNBATCHED
-            frame_path = self.temp_dir / f"{frame_idx:05d}.jpg"
-            if not frame_path.exists():
-                continue
-            frame = cv2.imread(str(frame_path))
-
-            # Load and overlay mask if it exists
-            mask_path = (
-                self.output_dir
-                / f"video{video_idx}/masks/{frame_idx:05d}_{obj_id}_mask.pt"
-            )
-            if mask_path.exists():
-                mask = torch.load(mask_path).numpy().astype(np.uint8)
-                mask_overlay = np.zeros_like(frame)
-                mask_overlay[mask == 1] = [0, 255, 0]  # Green overlay
-                frame = cv2.addWeighted(frame, 1.0, mask_overlay, 0.3, 0)
-
-            # Draw centroid trail
-            trail.append((x, y))
-            if len(trail) > 10:
-                # Draw line connecting previous centroids
-                points = np.array(trail[-10:], dtype=np.int32)  # Keep last 10 points
-                cv2.polylines(frame, [points], False, (0, 0, 255), 2)
-
-            # Draw current centroid position
-            cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)  # Blue dot
-
-            # Save visualization
-            vis_path = vis_dir / f"{frame_idx:05d}_tracked.jpg"
-            cv2.imwrite(str(vis_path), frame)
+    # def write_centroid(
+    #     self,
+    #     first_moment: dict[Int, tuple[Int, Int]],
+    #     video_idx: Int,
+    #     obj_id: Int = 1,
+    # ) -> None:
+    #     """Write object centroid position over time from first image moments.
+    #     For each frame, overlays the segmentation mask and draws tracking visualization
+    #     showing centroid position and movement trail.
+    #
+    #     Args:
+    #         first_moment (dict[Int, tuple[Int, Int]]): Dictionary mapping frame indices to (x,y) centroid coordinates,
+    #             as returned by Analyzer.first_image_moment()
+    #         video_idx (Int): Index of the video in videos dict.
+    #         obj_id (Int): ID of the object you want to track.
+    #     """
+    #
+    #     # Sort by frame index to ensure temporal ordering
+    #     tracking = []
+    #     for frame_idx in sorted(first_moment.keys()):
+    #         x, y = first_moment[frame_idx]
+    #         tracking.append((frame_idx, x, y))
+    #
+    #     # TODO leave this here? It's already done in group_frames_by_video
+    #     # Create visualization directory
+    #     vis_dir = self.output_dir / f"video{video_idx}/visualization"
+    #     vis_dir.mkdir(exist_ok=True)
+    #
+    #     # For storing centroid trail
+    #     trail = []
+    #
+    #     # Process each frame
+    #     for frame_idx, x, y in tracking:
+    #         # Load original frame; temp_dir MUST BE UNBATCHED
+    #         frame_path = self.temp_dir / f"{frame_idx:05d}.jpg"
+    #         if not frame_path.exists():
+    #             continue
+    #         frame = cv2.imread(str(frame_path))
+    #
+    #         # Load and overlay mask if it exists
+    #         mask_path = (
+    #             self.output_dir
+    #             / f"video{video_idx}/masks/{frame_idx:05d}_{obj_id}_mask.pt"
+    #         )
+    #         if mask_path.exists():
+    #             mask = torch.load(mask_path).numpy().astype(np.uint8)
+    #             mask_overlay = np.zeros_like(frame)
+    #             mask_overlay[mask == 1] = [0, 255, 0]  # Green overlay
+    #             frame = cv2.addWeighted(frame, 1.0, mask_overlay, 0.3, 0)
+    #
+    #         # Draw centroid trail
+    #         trail.append((x, y))
+    #         if len(trail) > 10:
+    #             # Draw line connecting previous centroids
+    #             points = np.array(trail[-10:], dtype=np.int32)  # Keep last 10 points
+    #             cv2.polylines(frame, [points], False, (0, 0, 255), 2)
+    #
+    #         # Draw current centroid position
+    #         cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)  # Blue dot
+    #
+    #         # Save visualization
+    #         vis_path = vis_dir / f"{frame_idx:05d}_tracked.jpg"
+    #         cv2.imwrite(str(vis_path), frame)
 
     @staticmethod
     def create_graph(
