@@ -12,6 +12,7 @@ from pathlib import Path
 import decord
 import imageio
 import matplotlib.pyplot as plt
+import pandas as pd
 import torch
 from jaxtyping import Int, Bool
 
@@ -44,7 +45,7 @@ class IOHandler:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.videos = {}
 
-    def batch_frames(self, batch_size: int = 250) -> None:
+    def batch_temp_frames(self, batch_size: int = 250) -> None:
         """Organize extracted frames into batches.
         Args:
             batch_size (int, optional): Number of frames per batch. Defaults to 250.
@@ -65,7 +66,7 @@ class IOHandler:
 
             batch_num += 1
 
-    def unbatch_frames(self) -> None:
+    def unbatch_temp_frames(self) -> None:
         """Move all frames from batch directories back to temp_dir."""
         batch_dirs = sorted(
             [
@@ -137,7 +138,7 @@ class IOHandler:
             self.videos[video_idx] = frame_count - sum(self.videos)
             video_idx += 1
 
-        self.batch_frames()
+        self.batch_temp_frames()
         print(f"Extracted frames from {video_path}...")
 
     def extract_frames_from_manifest(self, manifest: str) -> None:
@@ -172,9 +173,11 @@ class IOHandler:
         for frame_idx, masks_dict in results.items():
             for obj_id, mask in masks_dict.items():
                 torch.save(
-                    torch.tensor(mask, dtype=torch.uint8),
-                    self.output_dir / f"/{frame_idx:05d}_{obj_id}_mask.pt",
+                    obj=torch.tensor(mask, dtype=torch.uint8),
+                    f=self.output_dir / f"{frame_idx:05d}_{obj_id}_mask.pt",
                 )
+
+        print(f"Saved {len(results)} frames with masks to {self.output_dir}")
 
     def group_frames_by_video(self) -> None:
         """Group mask files by video and create organized directory structure."""
@@ -182,6 +185,7 @@ class IOHandler:
             print("No video mapping found. Cannot group frames by video.")
             return
 
+        # TODO make room for already grouped frames/previous runs?
         # Get all mask files from the main masks directory
         masks_dir = self.output_dir
 
@@ -400,8 +404,8 @@ class IOHandler:
         output_dir: Path,
         title: str,
         x_data: list[Int],
-        x_axis_title: str,
         y_data: list[Int],
+        x_axis_title: str,
         y_axis_title: str,
     ) -> None:
         """Create a plot of a given data set and save it as a PNG image.
@@ -410,8 +414,8 @@ class IOHandler:
             output_dir (Path): Directory where the graph image will be saved.
             title (str): Title of the graph, also used as the filename (with .png extension).
             x_data (list[Int]): Data points for the x-axis.
-            x_axis_title (str): Label for the x-axis.
             y_data (list[Int]): Data points for the y-axis.
+            x_axis_title (str): Label for the x-axis.
             y_axis_title (str): Label for the y-axis.
         """
 
@@ -423,7 +427,31 @@ class IOHandler:
         plt.grid(True)
         plt.savefig(str(output_dir / f"{title}.png"), dpi=150, bbox_inches="tight")
         plt.close()
-        print(f"{title} graph saved in: {output_dir}")
+        print(f"{title:<20} | Graph saved in: {output_dir}")
+
+    @staticmethod
+    def create_csv(
+        output_dir: Path,
+        title: str,
+        x_data: list[Int],
+        y_data: list[Int],
+        x_axis_title: str,
+        y_axis_title: str,
+    ) -> None:
+        """Create a CSV file from the provided data.
+
+        Args:
+            output_file (Path): Directory to save the CSV file.
+            title (str): Title of the CSV file, also used as the filename (without extension).
+            x_data (list[Int]): Data points for the x-axis.
+            y_data (list[Int]): Data points for the y-axis.
+            x_axis_title (str): Label for the x-axis.
+            y_axis_title (str): Label for the y-axis.
+        """
+        data = {x_axis_title: x_data, y_axis_title: y_data}
+        df = pd.DataFrame(data)
+        df.to_csv(output_dir / f"{title}.csv", index=False)
+        print(f"{title:<20} | CSV saved in: {output_dir}")
 
     @staticmethod
     def convert_data_dict_to_list(

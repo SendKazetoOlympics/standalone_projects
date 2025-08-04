@@ -191,6 +191,7 @@ class SAMHandler:
                 offload_video_to_cpu=False,
                 compute_device=self.predictor.device,
             )
+
             self.inference_state["images"] = images
             self.inference_state["num_frames"] = len(images)
             # self.inference_state["frames_tracked_per_obj"].clear()

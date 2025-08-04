@@ -36,7 +36,7 @@ class Analyzer:
             data[frame_number][obj_id] = mask
         return data
 
-    # TODO are dicts the best way to do this? Makes it harder to use since most graph/csv functions need a list
+    # TODO are dicts the best way to do this? Makes it harder to use since most graph/csv functions need a list; current implementation just converts dicts to lists with iohandler
     @staticmethod
     def zeroth_image_moment(frames_dir: Path, object_id: Int = 1) -> dict[Int, Int]:
         """Calculate the zeroth moment (area) of binary masks for each frame.
@@ -88,7 +88,7 @@ class Analyzer:
                 if area == 0:
                     continue
 
-                height, width = mask.shape
+                _, height, width = mask.shape
                 x_coords = (
                     torch.arange(width, device=mask.device)
                     .view(1, -1)
@@ -138,7 +138,7 @@ class Analyzer:
                 if area == 0:
                     continue
 
-                height, width = mask.shape
+                _, height, width = mask.shape
                 x_coords = (
                     torch.arange(width, device=mask.device)
                     .view(1, -1)
