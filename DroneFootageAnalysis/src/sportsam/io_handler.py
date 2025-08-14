@@ -45,7 +45,7 @@ class IOHandler:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.videos = {}
 
-    def batch_temp_frames(self, batch_size: int = 250) -> None:
+    def batch_temp_frames(self, batch_size: int = 1000) -> None:
         """Organize extracted frames into batches.
         Args:
             batch_size (int, optional): Number of frames per batch. Defaults to 250.
