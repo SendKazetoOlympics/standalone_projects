@@ -9,7 +9,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-import cv2
+# import cv2
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from jaxtyping import Bool, Int
@@ -117,30 +119,27 @@ class SAMHandler:
         """
         click_coords = []
 
-        def mouse_callback(event, x, y, _flags, _param):
-            if event == cv2.EVENT_LBUTTONDOWN:
-                click_coords.append((x, y))
-                print(f"Click at: ({x}, {y})")
-
         # TODO batch0 is hardcoded, need to support other batches
         frame_path = self.frames_path / f"batch0/{frame_idx:05d}.jpg"
         if not frame_path.exists():
             raise FileNotFoundError(f"Image at {str(frame_path)} does not exist")
-        img = cv2.imread(str(frame_path))
+        img = mpimg.imread(str(frame_path))
         if img is None:
             raise ValueError(f"Could not read image at {str(frame_path)}")
 
-        cv2.namedWindow("Click on the object", cv2.WINDOW_AUTOSIZE)
-        cv2.setMouseCallback("Click on the object", mouse_callback)
+        fig, ax = plt.subplots()
+        ax.imshow(img)
 
-        while True:
-            cv2.imshow("Click on the object", img)
-            if cv2.waitKey(20) & 0xFF == 27:  # ESC to quit
-                break
-            if click_coords:
-                break
+        def onclick(event):
+            if event.inaxes is not None:  # Ignore clicks outside axes
+                ix, iy = int(event.xdata), int(event.ydata)
+                print(f"X: {ix}, Y: {iy}")
+                click_coords.append((ix, iy))
+                plt.close(fig)
 
-        cv2.destroyAllWindows()
+        _cid = fig.canvas.mpl_connect("button_press_event", onclick)
+
+        plt.show()
 
         if not click_coords:
             raise RuntimeError("No click was registered.")
