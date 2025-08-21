@@ -141,8 +141,19 @@ class SAMHandler:
 
         plt.show()
 
-        if not click_coords:
-            raise RuntimeError("No click was registered.")
+        while not click_coords:
+            manual_input = input(
+                "No clicks were registered. Enter coordinates manually (format: x,y): "
+            )
+            try:
+                x, y = map(int, manual_input.split(","))
+                click_coords.append((x, y))
+                print(f"Coordinates ({x}, {y}) appended to click_coords.")
+                break
+            except ValueError:
+                print(
+                    "Invalid input format. Please enter coordinates as x,y (e.g., 100,200)."
+                )
 
         # TODO support for negative clicks? Feedback loop for showing clicks and mask
         # Prepare points and labels for add_new_points_or_box
