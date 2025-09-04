@@ -110,7 +110,6 @@ def main():
                 first_moments, tuple_index=1
             )
             y_args = [
-                graphs_dir,
                 "y_data",
                 y_data_frames,
                 y_data_list,
