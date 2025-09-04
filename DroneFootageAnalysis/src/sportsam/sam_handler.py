@@ -49,14 +49,15 @@ class SAMHandler:
         self.frames_path = frames_path
         # Accept both enum names (e.g. "SMALL") and values (e.g. "sam2.1_hiera_s.yaml")
         if isinstance(model, str):
+            original_model_str = model
             model = model.upper()
             try:
                 model = SAMModels[model]
             except KeyError:
                 try:
-                    model = SAMModels(model.upper())
+                    model = SAMModels(model)
                 except ValueError:
-                    raise ValueError(f"{model} is not a valid SAMModels name or value")
+                    raise ValueError(f"{original_model_str} is not a valid SAMModels name or value")
         self.model = model
         print(f"Using model: {model}")
 
@@ -123,9 +124,10 @@ class SAMHandler:
         frame_path = self.frames_path / f"batch0/{frame_idx:05d}.jpg"
         if not frame_path.exists():
             raise FileNotFoundError(f"Image at {str(frame_path)} does not exist")
-        img = mpimg.imread(str(frame_path))
-        if img is None:
-            raise ValueError(f"Could not read image at {str(frame_path)}")
+        try:
+            img = mpimg.imread(str(frame_path))
+        except Exception as e:
+            raise ValueError(f"Could not read image at {str(frame_path)}: {e}")
 
         fig, ax = plt.subplots()
         ax.imshow(img)
