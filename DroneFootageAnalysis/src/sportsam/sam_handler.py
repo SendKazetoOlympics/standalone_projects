@@ -124,9 +124,10 @@ class SAMHandler:
         frame_path = self.frames_path / f"batch0/{frame_idx:05d}.jpg"
         if not frame_path.exists():
             raise FileNotFoundError(f"Image at {str(frame_path)} does not exist")
-        img = mpimg.imread(str(frame_path))
-        if img is None:
-            raise ValueError(f"Could not read image at {str(frame_path)}")
+        try:
+            img = mpimg.imread(str(frame_path))
+        except Exception as e:
+            raise ValueError(f"Could not read image at {str(frame_path)}: {e}")
 
         fig, ax = plt.subplots()
         ax.imshow(img)
