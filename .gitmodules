@@ -1,0 +1,3 @@
+[submodule "DroneFootageAnalysis/sam2"]
+	path = DroneFootageAnalysis/sam2
+	url = https://github.com/ChronoInferna/sam2

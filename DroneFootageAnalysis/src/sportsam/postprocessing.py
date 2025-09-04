@@ -10,6 +10,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
 # from torchvision.io import read_image
 
 
@@ -102,85 +103,6 @@ def add_masks_to_blank(frame_size, masks_dict, output_path, alpha=1):
     cv2.imwrite(output_path, result_bgr)
 
 
-def area_of_mask(path_to_mask):
-    """
-    Calculate the area of a binary mask.
-
-    Args:
-        path_to_mask (Path): Path to the binary mask image.
-
-    Returns:
-        int: Area of the mask.
-    """
-    mask = torch.load(path_to_mask)
-    if mask is None:
-        raise ValueError(f"Error: Could not read mask from {path_to_mask}")
-
-    mask_float = mask.float()
-    area = torch.sum(mask_float)
-    return area.int().item()
-
-
-def first_moment_of_mask(path_to_mask):
-    """
-    Calculate the first moment of inertia (centroid) of a binary mask.
-
-    Args:
-        path_to_mask (Path): Path to the binary mask image.
-
-    Returns:
-        tuple: Mean x and y coordinates of the mask.
-    """
-    mask = torch.load(path_to_mask)
-    if mask is None:
-        raise ValueError(f"Error: Could not read mask from {path_to_mask}")
-
-    mask_float = mask.float()
-    area = torch.sum(mask_float)
-    height, width = mask_float.shape[1:]
-
-    x_coords = torch.arange(width).view(1, -1).expand(height, width)
-    y_coords = torch.arange(height).view(-1, 1).expand(height, width)
-
-    x = (x_coords * mask).sum() / (area + 1e-8)
-    y = (y_coords * mask).sum() / (area + 1e-8)
-
-    return x.round().int().item(), y.round().int().item()
-
-
-def second_moment_of_mask(path_to_mask):
-    """
-    Calculate the second moment of inertia of a binary mask.
-
-    Args:
-        path_to_mask (Path): Path to the binary mask image.
-    Returns:
-        tuple: Second moment of inertia (Ixx, Iyy, Ixy).
-    """
-    mask = torch.load(path_to_mask)
-    if mask is None:
-        raise ValueError(f"Error: Could not read mask from {path_to_mask}")
-
-    mask_float = mask.float()
-    area = torch.sum(mask_float)
-    height, width = mask_float.shape[1:]
-
-    y_coords = torch.arange(height).view(-1, 1).expand(height, width)
-    x_coords = torch.arange(width).view(1, -1).expand(height, width)
-
-    x = (x_coords * mask).sum() / (area + 1e-8)
-    y = (y_coords * mask).sum() / (area + 1e-8)
-
-    x_diff = x_coords - x
-    y_diff = y_coords - y
-
-    xx = (x_diff**2 * mask).sum() / (area + 1e-8)
-    yy = (y_diff**2 * mask).sum() / (area + 1e-8)
-    xy = (x_diff * y_diff * mask).sum() / (area + 1e-8)
-
-    return xx.int().item(), yy.int().item(), xy.int().item()
-
-
 def create_speed_graph(first_moments, timestamps, output_file):
     if len(first_moments) < 2:
         print("Not enough points to calculate speed")
@@ -232,9 +154,7 @@ def create_speed_graph(first_moments, timestamps, output_file):
     colors = []
     colors.append(speeds[0] if speeds else 0)
     colors.extend(speeds)
-    scatter = plt.scatter(
-        x_coords, y_coords, c=colors, cmap="viridis", s=20, alpha=0.7
-    )
+    scatter = plt.scatter(x_coords, y_coords, c=colors, cmap="viridis", s=20, alpha=0.7)
     plt.plot(x_coords, y_coords, "k-", alpha=0.3, linewidth=1)
     plt.colorbar(scatter, label="Speed (px/s)")
     plt.xlabel("X Position (pixels)")
@@ -310,14 +230,12 @@ def track_object_path(video_path, output_path):
         if not ret:
             break
 
-        mask_path = (
-            video_path.parent / f"mask_tensors/{frame_count:05d}_1_mask.pt"
-        )
-        area = area_of_mask(mask_path)
+        mask_path = video_path.parent / f"mask_tensors/{frame_count:05d}_1_mask.pt"
+        area = zeroth_image_moment(mask_path)
         areas.append(area)
-        first_moment = first_moment_of_mask(mask_path)
+        first_moment = first_image_moment(mask_path)
         first_moments.append(first_moment)
-        second_moment = second_moment_of_mask(mask_path)
+        second_moment = second_image_moment(mask_path)
         second_moments.append(second_moment)
         timestamps.append(frame_count / fps)
 
